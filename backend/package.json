@@ -1,0 +1,33 @@
+{
+  "name": "encore-ts-starter",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Camel backend",
+  "license": "MPL-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest --passWithNoTests",
+    "init:secret": "node scripts/init-secret.mjs",
+    "init:db": "prisma migrate dev --name init",
+    "init": "npm run init:secret && npm run init:db",
+    "postinstall": "node scripts/init-secret.mjs",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.5.7",
+    "prisma": "^5.22.0",
+    "typescript": "^5.2.2",
+    "vitest": "^1.5.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "argon2": "^0.41.1",
+    "encore.dev": "^1.56.6",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.13.0"
+  }
+}

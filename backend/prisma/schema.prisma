@@ -1,0 +1,22 @@
+// Prisma schema for Camel. SQLite provider; single `dev.db` file per Phase 1.
+// Regenerate the client with `npx prisma generate` after edits, and create
+// migrations with `npx prisma migrate dev --name <change>`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
