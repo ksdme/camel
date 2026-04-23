@@ -1,0 +1,12 @@
+.encore
+encore.gen.go
+encore.gen.cue
+/.encore
+node_modules
+/encore.gen
+.env
+.secrets.local.cue
+prisma/dev.db
+prisma/dev.db-journal
+query.http
+CODE_STANDARDS.md
