@@ -1,6 +1,7 @@
 import { api, APIError } from "encore.dev/api";
+import { Prisma } from "@prisma/client";
 import { MinLen, MaxLen, MatchesRegexp } from "encore.dev/validate";
-import { prisma } from "./db";
+import { prisma } from "../lib/db";
 import { hashPassword, verifyPassword } from "./password";
 import { issueAccessToken } from "./tokens";
 
@@ -22,6 +23,22 @@ interface LoginResponse {
   created: boolean;
 }
 
+function isUniqueUsernameError(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (err.code !== "P2002") {
+    return false;
+  }
+
+  const target = err.meta?.target;
+  if (Array.isArray(target)) {
+    return target.includes("username");
+  }
+  return typeof target === "string" && target.includes("username");
+}
+
 // POST /auth/login
 // Combined signin + signup. If the username doesn't exist, a new user is
 // created with the supplied password; otherwise the password is verified
@@ -33,15 +50,43 @@ export const login = api(
 
     if (!existing) {
       const passwordHash = await hashPassword(password);
-      const user = await prisma.user.create({
-        data: { username, passwordHash },
-        select: { id: true, username: true, createdAt: true },
-      });
-      return {
-        token: issueAccessToken(user.id),
-        user,
-        created: true,
-      };
+      try {
+        const user = await prisma.user.create({
+          data: { username, passwordHash },
+          select: { id: true, username: true, createdAt: true },
+        });
+        return {
+          token: issueAccessToken(user.id),
+          user,
+          created: true,
+        };
+      } catch (err) {
+        if (!isUniqueUsernameError(err)) {
+          throw err;
+        }
+
+        // Another concurrent request created the same username first.
+        const winner = await prisma.user.findUnique({ where: { username } });
+        if (!winner) {
+          throw APIError.unavailable("login conflict, please retry");
+        }
+
+        const ok = await verifyPassword(winner.passwordHash, password);
+        if (!ok) {
+          throw APIError.unauthenticated("invalid username or password");
+        }
+
+        return {
+          token: issueAccessToken(winner.id),
+          user: {
+            id: winner.id,
+            username: winner.username,
+            createdAt: winner.createdAt,
+          },
+          created: false,
+        };
+      }
+
     }
 
     const ok = await verifyPassword(existing.passwordHash, password);

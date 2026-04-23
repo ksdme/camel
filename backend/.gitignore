@@ -9,3 +9,4 @@ node_modules
 prisma/dev.db
 prisma/dev.db-journal
 query.http
+CODE_STANDARDS.md

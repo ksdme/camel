@@ -22,14 +22,14 @@ From this `backend/` directory:
 npm install
 ```
 
-This also bootstraps local secrets by creating `.secrets.local.cue` if it does not already exist.
+This also bootstraps local secrets and initializes the local database.
 
 ## Initialize Local Development
 
-Run the full local setup:
+`npm install` is the full local setup step.
 
 ```bash
-npm run init
+npm install
 ```
 
 That does two things:
@@ -68,10 +68,10 @@ encore test
 
 ## Current API
 
+- `GET /`
 - `POST /auth/login`
 - `GET /auth/me`
 - `POST /auth/logout`
-- `GET /hello/:name`
 
 Example login payload:
 

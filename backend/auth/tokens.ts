@@ -13,6 +13,20 @@ export interface AccessTokenPayload {
   exp: number;
 }
 
+function isAccessTokenPayload(value: unknown): value is AccessTokenPayload {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.sub === "string" &&
+    typeof payload.jti === "string" &&
+    typeof payload.iat === "number" &&
+    typeof payload.exp === "number"
+  );
+}
+
 export function issueAccessToken(userId: string): string {
   return jwt.sign(
     { sub: userId, jti: randomBytes(16).toString("hex") },
@@ -22,7 +36,13 @@ export function issueAccessToken(userId: string): string {
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
-  return jwt.verify(token, jwtSigningSecret(), {
+  const decoded = jwt.verify(token, jwtSigningSecret(), {
     algorithms: ["HS256"],
-  }) as AccessTokenPayload;
+  });
+
+  if (!isAccessTokenPayload(decoded)) {
+    throw new Error("invalid token payload");
+  }
+
+  return decoded;
 }

@@ -5,7 +5,7 @@ import { isRevokedBlocklistValue } from "./revocation";
 import { verifyAccessToken } from "./tokens";
 
 interface AuthParams {
-  authorization: Header<"Authorization">;
+  authorization?: Header<"Authorization">;
 }
 
 export interface AuthData {

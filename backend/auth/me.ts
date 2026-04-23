@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
-import { prisma } from "./db";
+import { prisma } from "../lib/db";
 
 interface MeResponse {
   id: string;
