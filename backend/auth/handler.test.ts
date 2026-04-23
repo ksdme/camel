@@ -41,11 +41,11 @@ vi.mock("./tokens", () => ({
 // Import (resolved after mocks)
 // ---------------------------------------------------------------------------
 import { authenticate } from "./handler";
+import type { AuthData } from "./handler";
 
-// Narrow to a plain async function for test invocations.
-const callAuthenticate = authenticate as unknown as (params: {
-  authorization?: string;
-}) => Promise<{ userID: string; jti: string; exp: number }>;
+// When encore.dev/auth is mocked, authHandler() returns the raw async function.
+type AuthHandlerFn = (params: { authorization?: string }) => Promise<AuthData>;
+const callAuthenticate = authenticate as unknown as AuthHandlerFn;
 
 const fakePayload = {
   sub: "user-123",

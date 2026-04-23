@@ -19,6 +19,7 @@ describe("issueAccessToken", () => {
   });
 
   it("includes a jti claim (16-byte hex, 32 chars)", () => {
+    // jti is randomBytes(16).toString("hex") → 2 hex digits per byte = 32 chars.
     const token = issueAccessToken("user-abc");
     const payload = verifyAccessToken(token);
     expect(typeof payload.jti).toBe("string");

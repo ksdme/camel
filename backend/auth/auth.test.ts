@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { AccessTokenPayload } from "./tokens";
 
 // ---------------------------------------------------------------------------
 // Hoisted mock handles (must be created before vi.mock factories run)
@@ -78,11 +79,18 @@ const existingUser = {
   createdAt: new Date("2024-01-01T00:00:00.000Z"),
 };
 
-// Narrow `login` to a plain async function for test invocations.
-const callLogin = login as unknown as (req: {
+interface LoginRequest {
   username: string;
   password: string;
-}) => Promise<{ token: string; user: { id: string; username: string }; created: boolean }>;
+}
+interface LoginResponse {
+  token: string;
+  user: { id: string; username: string; createdAt: Date };
+  created: boolean;
+}
+// When encore.dev/api is mocked, `api()` returns the raw handler directly.
+type LoginHandler = (req: LoginRequest) => Promise<LoginResponse>;
+const callLogin = login as unknown as LoginHandler;
 
 // ---------------------------------------------------------------------------
 // Tests
