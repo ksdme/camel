@@ -7,7 +7,6 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "import:markdown": "tsx ./src/scripts/import-markdown.ts",
     "agent": "tsx ./src/scripts/agent.ts",
     "export:markdown-json": "tsx ./src/scripts/export-markdown-json.ts"
   },
@@ -19,9 +18,7 @@
   },
   "dependencies": {
     "@openrouter/ai-sdk-provider": "^2.8.0",
-    "@types/better-sqlite3": "^7.6.13",
     "ai": "^6.0.168",
-    "better-sqlite3": "^12.9.0",
     "zod": "^4.3.6"
   }
 }
