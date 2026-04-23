@@ -2,7 +2,7 @@
 // Bootstraps local dev config idempotently:
 //   1. Copies .env.example -> .env if .env is missing.
 //   2. Writes .secrets.local.cue with a JWT_SIGNING_SECRET of the form
-//      `<32-byte hex>+<cute-name>+salt+camel` if the file is missing.
+//      `<64-char hex>_<cute-name>_camel` if the file is missing.
 // Existing files are never overwritten, so `npm install` won't rotate the
 // dev secret behind your back.
 
