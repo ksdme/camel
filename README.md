@@ -94,7 +94,6 @@ The backend currently includes:
 - `POST /auth/login`
 - `GET /auth/me`
 - `POST /auth/logout`
-- `GET /hello/:name`
 
 Example login request:
 
@@ -118,7 +117,6 @@ camel/
 ├── README.md
 └── backend/
 		├── auth/
-		├── hello/
 		├── prisma/
 		├── scripts/
 		├── package.json
