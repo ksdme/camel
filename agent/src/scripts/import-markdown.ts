@@ -1,15 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
-import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
-
-type EntryRecord = {
-  entryPath: string;
-  name: string;
-  isDirectory: 0 | 1;
-  parentNameNormalized: string | null;
-  markdownContent: string | null;
-  contentDigest: string | null;
-};
+import {
+  ensureMarkdownEntriesTable,
+  type MarkdownEntryRecord,
+  upsertMarkdownEntries,
+} from "../db/markdown-entries";
+import { openDatabase } from "../db/sqlite";
 
 function normalizeName(name: string | null): string | null {
   if (!name) {
@@ -29,7 +25,7 @@ async function walkDirectory(
   rootDir: string,
   currentDir: string,
   parentName: string | null,
-  output: EntryRecord[],
+  output: MarkdownEntryRecord[],
 ): Promise<void> {
   const entries = await readdir(currentDir, { withFileTypes: true });
 
@@ -71,75 +67,18 @@ async function walkDirectory(
   }
 }
 
-function ensureTable(db: InstanceType<typeof DatabaseSync>): void {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS markdown_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entry_path TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      is_directory INTEGER NOT NULL,
-      parent_name_normalized TEXT,
-      markdown_content TEXT,
-      content_digest TEXT,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-}
-
-function upsertEntries(
-  db: InstanceType<typeof DatabaseSync>,
-  entries: EntryRecord[],
-): void {
-  const stmt = db.prepare(`
-    INSERT INTO markdown_entries (
-      entry_path,
-      name,
-      is_directory,
-      parent_name_normalized,
-      markdown_content,
-      content_digest,
-      updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(entry_path) DO UPDATE SET
-      name = excluded.name,
-      is_directory = excluded.is_directory,
-      parent_name_normalized = excluded.parent_name_normalized,
-      markdown_content = excluded.markdown_content,
-      content_digest = excluded.content_digest,
-      updated_at = CURRENT_TIMESTAMP;
-  `);
-
-  db.exec("BEGIN");
-  try {
-    for (const row of entries) {
-      stmt.run(
-        row.entryPath,
-        row.name,
-        row.isDirectory,
-        row.parentNameNormalized,
-        row.markdownContent,
-        row.contentDigest,
-      );
-    }
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
-}
-
 async function main(): Promise<void> {
   const rootArg = process.argv[2] ?? ".";
   const dbArg = process.argv[3] ?? "./notes.db";
   const rootDir = path.resolve(rootArg);
   const dbPath = path.resolve(dbArg);
 
-  const entries: EntryRecord[] = [];
+  const entries: MarkdownEntryRecord[] = [];
   await walkDirectory(rootDir, rootDir, null, entries);
 
-  const db = new DatabaseSync(dbPath);
-  ensureTable(db);
-  upsertEntries(db, entries);
+  const db = openDatabase(dbPath);
+  ensureMarkdownEntriesTable(db);
+  upsertMarkdownEntries(db, entries);
   db.close();
 
   console.log(`Imported ${entries.length} entries into ${dbPath}`);
