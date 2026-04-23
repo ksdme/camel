@@ -1,7 +1,7 @@
 import { CacheCluster, StringKeyspace } from "encore.dev/storage/cache";
 
 const cluster = new CacheCluster("auth-cache", {
-  evictionPolicy: "noeviction",
+  evictionPolicy: "allkeys-lru",
 });
 
 // Revoked-token set keyed by JWT `jti`. Entries are written with a TTL equal

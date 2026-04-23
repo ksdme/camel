@@ -12,7 +12,7 @@ export const camel = api(
     return {
       name: "camel-backend",
       status: "ok",
-      docs: ["/auth/login", "/auth/me", "/auth/logout"],
+      docs: ["/auth/login", "/auth/refresh", "/auth/me", "/auth/logout", "/settings/event_logs"],
     };
   },
 );

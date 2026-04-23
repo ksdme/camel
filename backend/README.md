@@ -70,7 +70,9 @@ encore test
 
 - `GET /`
 - `POST /auth/login`
+- `POST /auth/refresh`
 - `GET /auth/me`
+- `GET /settings/event_logs`
 - `POST /auth/logout`
 
 Example login payload:

@@ -17,6 +17,38 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  authEvents   AuthEvent[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+model AuthEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  username  String?
+  eventType String
+  success   Boolean
+  reason    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt], map: "idx_auth_events_user_createdAt")
+  @@index([username, createdAt], map: "idx_auth_events_username_createdAt")
+  @@map("auth_events")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  jti       String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, revokedAt], map: "idx_refresh_tokens_user_revoked")
+  @@map("refresh_tokens")
 }
