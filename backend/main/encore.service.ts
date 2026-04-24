@@ -1,3 +1,6 @@
 import { Service } from "encore.dev/service";
+import log from "encore.dev/log";
 
-export default new Service("camel");
+log.info("camel backend starting");
+
+export default new Service("main");

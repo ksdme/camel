@@ -7,9 +7,10 @@
   "type": "module",
   "scripts": {
     "test": "vitest --passWithNoTests",
-    "init:secret": "node scripts/init-secret.mjs",
-    "init:db": "prisma migrate dev --name init",
-    "postinstall": "npm run init:secret && npm run init:db",
+    "dev": "encore run",
+    "setup": "node scripts/init-secret.mjs && prisma migrate deploy",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
@@ -23,7 +24,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "argon2": "^0.41.1",
-    "encore.dev": "1.56.6",
+    "encore.dev": "^1.56.7",
     "jsonwebtoken": "^9.0.2"
   },
   "optionalDependencies": {
