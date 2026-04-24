@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@prisma/client";
-import { prisma } from "../../../lib/db";
+import { Prisma, prisma } from "../../../lib/db";
 
 const AUTH_EVENT_RETENTION_DAYS = 15;
 

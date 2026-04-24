@@ -1,11 +1,11 @@
 import { api, APIError } from "encore.dev/api";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { Prisma } from "@prisma/client";
-import { prisma } from "../../../lib/db";
+import { Prisma, prisma } from "../../../lib/db";
 import { safeRecordAuthEvent } from "../../services/auth/audit";
 import { hashPassword, verifyPassword } from "../../services/auth/password";
 import { issueRefreshToken, storeRefreshToken } from "../../services/auth/refresh";
 import { issueAccessToken } from "../../services/auth/tokens";
+import { applyCors } from "../../utils/cors";
 import { readJsonBody, sendApiError, sendJson, setAuthCookies } from "../../utils/cookies";
 import { requestMetaFromIncomingMessage } from "../../utils/request_meta";
 
@@ -20,10 +20,13 @@ interface LoginResponse {
   created: boolean;
 }
 
-async function issueSessionTokens(userId: string): Promise<{ token: string; refreshToken: string }> {
+async function issueSessionTokens(
+  userId: string,
+  device: { userAgent?: string; ipAddress?: string },
+): Promise<{ token: string; refreshToken: string }> {
   const token = issueAccessToken(userId);
   const refresh = issueRefreshToken(userId);
-  await storeRefreshToken(userId, refresh.payload);
+  await storeRefreshToken(userId, refresh.payload, device);
   return { token, refreshToken: refresh.token };
 }
 
@@ -32,11 +35,13 @@ function isUniqueUsernameError(err: unknown): boolean {
     return false;
   }
 
-  if (err.code !== "P2002") {
+  const prismaErr = err as Prisma.PrismaClientKnownRequestError;
+
+  if (prismaErr.code !== "P2002") {
     return false;
   }
 
-  const target = err.meta?.target;
+  const target = prismaErr.meta?.target;
   if (Array.isArray(target)) {
     return target.includes("username");
   }
@@ -71,6 +76,8 @@ function validateLoginBody(
 export const login = api.raw(
   { expose: true, method: "POST", path: "/auth/login" },
   async (req: IncomingMessage, res: ServerResponse) => {
+    if (applyCors(req, res)) return;
+
     const reqMeta = requestMetaFromIncomingMessage(req);
 
     let body: unknown;
@@ -98,7 +105,7 @@ export const login = api.raw(
           data: { username, passwordHash },
           select: { id: true, username: true, createdAt: true },
         });
-        const session = await issueSessionTokens(user.id);
+        const session = await issueSessionTokens(user.id, reqMeta);
         await safeRecordAuthEvent({
           userId: user.id,
           username: user.username,
@@ -136,7 +143,7 @@ export const login = api.raw(
           throw APIError.unauthenticated("invalid username or password");
         }
 
-        const session = await issueSessionTokens(winner.id);
+        const session = await issueSessionTokens(winner.id, reqMeta);
         await safeRecordAuthEvent({
           userId: winner.id,
           username,
@@ -171,7 +178,7 @@ export const login = api.raw(
       return;
     }
 
-    const session = await issueSessionTokens(existing.id);
+    const session = await issueSessionTokens(existing.id, reqMeta);
     await safeRecordAuthEvent({
       userId: existing.id,
       username,

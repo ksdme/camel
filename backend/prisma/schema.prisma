@@ -15,6 +15,9 @@ model User {
   id           String   @id @default(uuid())
   username     String   @unique
   passwordHash String
+  email        String?  @unique
+  displayName  String?
+  deletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   authEvents   AuthEvent[]
@@ -33,7 +36,7 @@ model AuthEvent {
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt], map: "idx_auth_events_user_createdAt")
   @@index([username, createdAt], map: "idx_auth_events_username_createdAt")
@@ -41,13 +44,16 @@ model AuthEvent {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  jti       String   @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  id         String    @id @default(uuid())
+  userId     String
+  jti        String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  ipAddress  String?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt], map: "idx_refresh_tokens_user_revoked")
   @@map("refresh_tokens")

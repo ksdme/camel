@@ -18,9 +18,11 @@ export function setAuthCookies(
   accessToken: string,
   refreshToken: string,
 ): void {
+  // Refresh cookie is scoped to `/` so /settings/sessions can identify the
+  // current session by the caller's refresh jti. It remains HttpOnly.
   res.setHeader("Set-Cookie", [
     `access_token=${accessToken}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${ACCESS_TOKEN_MAX_AGE}${SECURE}`,
-    `refresh_token=${refreshToken}; HttpOnly; SameSite=Lax; Path=/auth/refresh; Max-Age=${REFRESH_TOKEN_MAX_AGE}${SECURE}`,
+    `refresh_token=${refreshToken}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${REFRESH_TOKEN_MAX_AGE}${SECURE}`,
   ]);
 }
 
@@ -28,7 +30,7 @@ export function setAuthCookies(
 export function clearAuthCookies(res: ServerResponse): void {
   res.setHeader("Set-Cookie", [
     `access_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${SECURE}`,
-    `refresh_token=; HttpOnly; SameSite=Lax; Path=/auth/refresh; Max-Age=0${SECURE}`,
+    `refresh_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${SECURE}`,
   ]);
 }
 

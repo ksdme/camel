@@ -8,6 +8,7 @@ import {
   verifyRefreshToken,
 } from "../../services/auth/refresh";
 import { issueAccessToken } from "../../services/auth/tokens";
+import { applyCors } from "../../utils/cors";
 import { getCookieValue, sendApiError, sendJson, setAuthCookies } from "../../utils/cookies";
 import { requestMetaFromIncomingMessage } from "../../utils/request_meta";
 
@@ -21,6 +22,8 @@ interface RefreshResponse {
 export const refresh = api.raw(
   { expose: true, method: "POST", path: "/auth/refresh" },
   async (req: IncomingMessage, res: ServerResponse) => {
+    if (applyCors(req, res)) return;
+
     const reqMeta = requestMetaFromIncomingMessage(req);
     let refreshToken: string | undefined = getCookieValue(req, "refresh_token");
 
@@ -60,7 +63,7 @@ export const refresh = api.raw(
     }
 
     const nextRefresh = issueRefreshToken(payload.sub);
-    await rotateRefreshToken(payload.jti, payload.sub, nextRefresh.payload);
+    await rotateRefreshToken(payload.jti, payload.sub, nextRefresh.payload, reqMeta);
     await safeRecordAuthEvent({
       userId: payload.sub,
       eventType: "refresh",

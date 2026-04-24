@@ -23,7 +23,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "argon2": "^0.41.1",
-    "encore.dev": "^1.56.6",
+    "encore.dev": "1.56.6",
     "jsonwebtoken": "^9.0.2"
   },
   "optionalDependencies": {

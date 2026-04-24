@@ -6,6 +6,7 @@ import { getAuthData } from "~encore/auth";
 import { safeRecordAuthEvent } from "../../services/auth/audit";
 import { tokenBlocklist } from "../../services/auth/cache";
 import { revokeAllRefreshTokensForUser } from "../../services/auth/refresh";
+import { applyCors } from "../../utils/cors";
 import { clearAuthCookies, sendApiError, sendJson } from "../../utils/cookies";
 import { requestMetaFromIncomingMessage } from "../../utils/request_meta";
 
@@ -15,6 +16,8 @@ import { requestMetaFromIncomingMessage } from "../../utils/request_meta";
 export const logout = api.raw(
   { expose: true, auth: true, method: "POST", path: "/auth/logout" },
   async (req: IncomingMessage, res: ServerResponse) => {
+    if (applyCors(req, res)) return;
+
     const reqMeta = requestMetaFromIncomingMessage(req);
     try {
       const { userID, jti, exp } = getAuthData()!;

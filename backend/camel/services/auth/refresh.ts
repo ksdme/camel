@@ -60,15 +60,24 @@ export function verifyRefreshToken(token: string): RefreshTokenPayload {
   return decoded;
 }
 
+export interface DeviceMeta {
+  userAgent?: string;
+  ipAddress?: string;
+}
+
 export async function storeRefreshToken(
   userId: string,
   payload: RefreshTokenPayload,
+  device: DeviceMeta = {},
 ): Promise<void> {
   await prisma.refreshToken.create({
     data: {
       userId,
       jti: payload.jti,
       expiresAt: new Date(payload.exp * 1000),
+      userAgent: device.userAgent ?? null,
+      ipAddress: device.ipAddress ?? null,
+      lastUsedAt: new Date(),
     },
   });
 }
@@ -85,6 +94,17 @@ export async function revokeAllRefreshTokensForUser(userId: string): Promise<voi
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
+}
+
+export async function revokeOtherRefreshTokensForUser(
+  userId: string,
+  keepJti: string,
+): Promise<number> {
+  const result = await prisma.refreshToken.updateMany({
+    where: { userId, revokedAt: null, NOT: { jti: keepJti } },
+    data: { revokedAt: new Date() },
+  });
+  return result.count;
 }
 
 export async function isActiveRefreshToken(jti: string, userId: string): Promise<boolean> {
@@ -105,6 +125,7 @@ export async function rotateRefreshToken(
   oldJti: string,
   userId: string,
   nextPayload: RefreshTokenPayload,
+  device: DeviceMeta = {},
 ): Promise<void> {
   await prisma.$transaction([
     prisma.refreshToken.updateMany({
@@ -116,6 +137,9 @@ export async function rotateRefreshToken(
         userId,
         jti: nextPayload.jti,
         expiresAt: new Date(nextPayload.exp * 1000),
+        userAgent: device.userAgent ?? null,
+        ipAddress: device.ipAddress ?? null,
+        lastUsedAt: new Date(),
       },
     }),
   ]);
