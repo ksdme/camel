@@ -5,10 +5,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Index from "./pages/Index.tsx";
+import Index from "./hooks/pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Profile from "./pages/Profile.tsx";
-import { SettingsPage } from "./pages/SettingsPage";
+import { SettingsPage } from "./pages/SettingsPage.tsx";
+import ShareLandingPage from "./pages/ShareLandingPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route path="/s/:token" element={<ShareLandingPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

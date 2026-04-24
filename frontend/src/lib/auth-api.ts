@@ -132,20 +132,32 @@ export interface SessionsResponse {
   sessions: SessionItem[];
 }
 
+export interface RevokeSessionResponse {
+  ok: boolean;
+  signedOut: boolean;
+}
+
 export function listSessions(): Promise<SessionsResponse> {
   return apiFetch<SessionsResponse>("/settings/sessions", { method: "GET" });
 }
 
-export function revokeSession(jti: string): Promise<OkResponse> {
-  return apiFetch<OkResponse>("/settings/sessions/revoke", {
+export function revokeSession(jti: string): Promise<RevokeSessionResponse> {
+  return apiFetch<RevokeSessionResponse>("/settings/sessions/revoke", {
     method: "POST",
     body: JSON.stringify({ jti }),
+  });
+}
+
+export function revokeCurrentSession(): Promise<RevokeSessionResponse> {
+  return apiFetch<RevokeSessionResponse>("/settings/sessions/revoke-current", {
+    method: "POST",
   });
 }
 
 export interface RevokeOthersResponse {
   ok: boolean;
   revoked: number;
+  signedOut: boolean;
 }
 
 export function revokeOtherSessions(): Promise<RevokeOthersResponse> {

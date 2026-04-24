@@ -15,6 +15,7 @@ import {
   Trash2,
   FolderPlus,
   FilePlus,
+  ExternalLink,
   Music,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -46,17 +47,18 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { useShallow } from "zustand/react/shallow";
 import type { WorkspaceFolder } from "@/types/workspace";
 
-const smartViews = [
-  { title: "All Notes", icon: FileText },
-  { title: "Recent", icon: Clock },
-  { title: "Shared", icon: Users },
-  { title: "AI Suggested", icon: Sparkles },
+type SmartView = "notes" | "recent" | "shared" | "ai";
+
+const smartViews: { title: string; icon: typeof FileText; view: SmartView }[] = [
+  { title: "All Notes", icon: FileText, view: "notes" },
+  { title: "Recent", icon: Clock, view: "recent" },
+  { title: "Shared", icon: Users, view: "shared" },
+  { title: "AI Suggested", icon: Sparkles, view: "ai" },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const [activeSmartView, setActiveSmartView] = useState("All Notes");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -69,7 +71,16 @@ export function AppSidebar() {
     createNote,
     activeView,
     setActiveView,
+    hydrateFolders,
+    hydrateNotes,
+    hydrateTags,
   } = useWorkspaceStore();
+
+  useEffect(() => {
+    void hydrateFolders();
+    void hydrateNotes();
+    void hydrateTags();
+  }, [hydrateFolders, hydrateNotes, hydrateTags]);
 
   const rootFolders = getChildFolders(null);
 
@@ -77,7 +88,6 @@ export function AppSidebar() {
     if (pathname !== "/") {
       navigate("/");
     }
-    setActiveView("notes");
   };
 
   return (
@@ -138,23 +148,37 @@ export function AppSidebar() {
           )}
           <SidebarGroupContent>
             <SidebarMenu>
-              {smartViews.map((view) => (
-                <SidebarMenuItem key={view.title}>
-                  <SidebarMenuButton
-                    onClick={() => {
-                      navigateHome();
-                      setActiveSmartView(view.title);
-                      setActiveNote(null);
-                    }}
-                    isActive={pathname === "/" && activeView === "notes" && activeSmartView === view.title && !activeNoteId}
-                    tooltip={view.title}
-                    className="hover:bg-sand-200 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-                  >
-                    <view.icon className="h-4 w-4" />
-                    {!collapsed && <span>{view.title}</span>}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {smartViews.map((view) => {
+                const isDedicated = view.view === "recent" || view.view === "shared";
+                const isActive =
+                  pathname === "/" &&
+                  (isDedicated
+                    ? activeView === view.view
+                    : view.view === "notes"
+                      ? activeView === "notes" && !activeNoteId
+                      : false);
+                return (
+                  <SidebarMenuItem key={view.title}>
+                    <SidebarMenuButton
+                      onClick={() => {
+                        navigateHome();
+                        setActiveNote(null);
+                        if (view.view === "ai") {
+                          setActiveView("notes");
+                        } else {
+                          setActiveView(view.view);
+                        }
+                      }}
+                      isActive={isActive}
+                      tooltip={view.title}
+                      className="hover:bg-sand-200 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+                    >
+                      <view.icon className="h-4 w-4" />
+                      {!collapsed && <span>{view.title}</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -346,6 +370,8 @@ function FolderTreeItem({
     createNote,
     renameNote,
     deleteNote,
+    setActiveView,
+    openShareDialog,
   } = useWorkspaceStore();
 
   const goHome = () => {
@@ -404,6 +430,11 @@ function FolderTreeItem({
             onDelete={() => deleteFolder(folder.id)}
             onNewNote={() => createNote("Untitled", folder.id)}
             onNewFolder={() => createFolder("New Folder", folder.id)}
+            onShare={() => {
+              goHome();
+              setActiveView("shared");
+              openShareDialog("folder", folder.id);
+            }}
           />
         )}
       </SidebarMenuButton>
@@ -464,11 +495,13 @@ function FolderContextMenu({
   onDelete,
   onNewNote,
   onNewFolder,
+  onShare,
 }: {
   onRename: () => void;
   onDelete: () => void;
   onNewNote: () => void;
   onNewFolder: () => void;
+  onShare: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -490,6 +523,10 @@ function FolderContextMenu({
         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onNewFolder(); }}>
           <FolderPlus className="h-4 w-4 mr-2" />
           New Folder
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onShare(); }}>
+          <ExternalLink className="h-4 w-4 mr-2" />
+          Share
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRename(); }}>

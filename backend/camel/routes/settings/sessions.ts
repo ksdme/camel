@@ -1,15 +1,17 @@
 import { api, APIError } from "encore.dev/api";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { expireIn } from "encore.dev/storage/cache";
 import { getAuthData } from "~encore/auth";
 import { prisma } from "../../../lib/db";
 import { safeRecordAuthEvent } from "../../services/auth/audit";
+import { tokenBlocklist } from "../../services/auth/cache";
 import {
   revokeOtherRefreshTokensForUser,
   revokeRefreshToken,
   verifyRefreshToken,
 } from "../../services/auth/refresh";
 import { applyCors } from "../../utils/cors";
-import { getCookieValue, readJsonBody, sendApiError, sendJson } from "../../utils/cookies";
+import { clearAuthCookies, getCookieValue, readJsonBody, sendApiError, sendJson } from "../../utils/cookies";
 import { requestMetaFromIncomingMessage } from "../../utils/request_meta";
 
 interface SessionItem {
@@ -26,6 +28,17 @@ interface SessionsResponse {
   sessions: SessionItem[];
 }
 
+interface RevokeSessionResponse {
+  ok: boolean;
+  signedOut: boolean;
+}
+
+interface RevokeOtherSessionsResponse {
+  ok: boolean;
+  revoked: number;
+  signedOut: boolean;
+}
+
 function currentJtiFromCookie(req: IncomingMessage): string | null {
   const token = getCookieValue(req, "refresh_token");
   if (!token) return null;
@@ -35,6 +48,11 @@ function currentJtiFromCookie(req: IncomingMessage): string | null {
   } catch {
     return null;
   }
+}
+
+async function revokeCurrentAccessToken(accessJti: string, exp: number): Promise<void> {
+  const ttlMs = Math.max(1, exp * 1000 - Date.now());
+  await tokenBlocklist.set({ jti: accessJti }, "1", { expiry: expireIn(ttlMs) });
 }
 
 // GET /settings/sessions
@@ -84,8 +102,8 @@ export const listSessions = api.raw(
 );
 
 // POST /settings/sessions/revoke
-// Body: { jti }. Revokes the matching session. The caller cannot revoke their
-// own current session via this endpoint — they should sign out instead.
+// Body: { jti }. Revokes the matching session. If the target is the caller's
+// current session, the access token is blocklisted and auth cookies are expired.
 export const revokeSession = api.raw(
   { expose: true, auth: true, method: "POST", path: "/settings/sessions/revoke" },
   async (req: IncomingMessage, res: ServerResponse) => {
@@ -93,7 +111,7 @@ export const revokeSession = api.raw(
 
     const reqMeta = requestMetaFromIncomingMessage(req);
     try {
-      const { userID } = getAuthData()!;
+      const { userID, jti: accessJti, exp } = getAuthData()!;
       const body = (await readJsonBody(req)) as { jti?: unknown } | null;
       const jti = body && typeof body.jti === "string" ? body.jti : null;
       if (!jti) {
@@ -102,13 +120,7 @@ export const revokeSession = api.raw(
       }
 
       const currentJti = currentJtiFromCookie(req);
-      if (currentJti && currentJti === jti) {
-        sendJson(res, 400, {
-          code: "invalid_argument",
-          message: "cannot revoke current session — sign out instead",
-        });
-        return;
-      }
+      const isCurrentSession = currentJti !== null && currentJti === jti;
 
       const target = await prisma.refreshToken.findFirst({
         where: { jti, userId: userID },
@@ -119,16 +131,66 @@ export const revokeSession = api.raw(
         return;
       }
 
-      await revokeRefreshToken(jti);
-      await safeRecordAuthEvent({
-        userId: userID,
-        eventType: "session_revoke",
-        success: true,
-        ipAddress: reqMeta.ipAddress,
-        userAgent: reqMeta.userAgent,
-      });
+      const writes: Promise<unknown>[] = [
+        revokeRefreshToken(jti),
+        safeRecordAuthEvent({
+          userId: userID,
+          eventType: "session_revoke",
+          success: true,
+          ipAddress: reqMeta.ipAddress,
+          userAgent: reqMeta.userAgent,
+        }),
+      ];
 
-      sendJson(res, 200, { ok: true });
+      if (isCurrentSession) {
+        writes.push(revokeCurrentAccessToken(accessJti, exp));
+      }
+
+      await Promise.all(writes);
+
+      if (isCurrentSession) {
+        clearAuthCookies(res);
+      }
+
+      sendJson(res, 200, { ok: true, signedOut: isCurrentSession } satisfies RevokeSessionResponse);
+    } catch (err) {
+      if (err instanceof APIError) sendApiError(res, err);
+      else sendJson(res, 500, { code: "internal", message: "internal server error" });
+    }
+  },
+);
+
+// POST /settings/sessions/revoke-current
+// Revokes the caller's current refresh token, blocklists the current access
+// token, and expires both auth cookies.
+export const revokeCurrentSession = api.raw(
+  { expose: true, auth: true, method: "POST", path: "/settings/sessions/revoke-current" },
+  async (req: IncomingMessage, res: ServerResponse) => {
+    if (applyCors(req, res)) return;
+
+    const reqMeta = requestMetaFromIncomingMessage(req);
+    try {
+      const { userID, jti: accessJti, exp } = getAuthData()!;
+      const currentJti = currentJtiFromCookie(req);
+
+      const writes: Promise<unknown>[] = [
+        revokeCurrentAccessToken(accessJti, exp),
+        safeRecordAuthEvent({
+          userId: userID,
+          eventType: "session_revoke",
+          success: true,
+          ipAddress: reqMeta.ipAddress,
+          userAgent: reqMeta.userAgent,
+        }),
+      ];
+
+      if (currentJti) {
+        writes.push(revokeRefreshToken(currentJti));
+      }
+
+      await Promise.all(writes);
+      clearAuthCookies(res);
+      sendJson(res, 200, { ok: true, signedOut: true } satisfies RevokeSessionResponse);
     } catch (err) {
       if (err instanceof APIError) sendApiError(res, err);
       else sendJson(res, 500, { code: "internal", message: "internal server error" });
@@ -145,19 +207,21 @@ export const revokeOtherSessions = api.raw(
 
     const reqMeta = requestMetaFromIncomingMessage(req);
     try {
-      const { userID } = getAuthData()!;
+      const { userID, jti: accessJti, exp } = getAuthData()!;
       const currentJti = currentJtiFromCookie(req);
+      const signedOut = currentJti === null;
 
       let count = 0;
       if (currentJti) {
         count = await revokeOtherRefreshTokensForUser(userID, currentJti);
       } else {
-        // No valid refresh cookie — revoke all active tokens.
         const result = await prisma.refreshToken.updateMany({
           where: { userId: userID, revokedAt: null },
           data: { revokedAt: new Date() },
         });
         count = result.count;
+        await revokeCurrentAccessToken(accessJti, exp);
+        clearAuthCookies(res);
       }
 
       await safeRecordAuthEvent({
@@ -168,7 +232,7 @@ export const revokeOtherSessions = api.raw(
         userAgent: reqMeta.userAgent,
       });
 
-      sendJson(res, 200, { ok: true, revoked: count });
+      sendJson(res, 200, { ok: true, revoked: count, signedOut } satisfies RevokeOtherSessionsResponse);
     } catch (err) {
       if (err instanceof APIError) sendApiError(res, err);
       else sendJson(res, 500, { code: "internal", message: "internal server error" });

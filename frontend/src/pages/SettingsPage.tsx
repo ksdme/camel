@@ -537,16 +537,30 @@ function PasswordCard() {
 /* -------------------- Sessions -------------------- */
 
 function SessionsCard() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const clear = useAuthStore((s) => s.clear);
   const query = useQuery({
     queryKey: ["settings", "sessions"],
     queryFn: AuthApi.listSessions,
   });
 
+  const handleSignedOut = () => {
+    clear();
+    queryClient.clear();
+    navigate("/login", { replace: true });
+  };
+
   const revokeOne = useMutation({
     mutationFn: (jti: string) => AuthApi.revokeSession(jti),
-    onSuccess: () => {
+    onSuccess: (resp) => {
+      if (resp.signedOut) {
+        toast.success("Session ended");
+        handleSignedOut();
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["settings", "sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["settings", "event_logs"] });
       toast.success("Session revoked");
     },
     onError: (err) => {
@@ -554,10 +568,27 @@ function SessionsCard() {
     },
   });
 
+  const revokeCurrent = useMutation({
+    mutationFn: () => AuthApi.revokeCurrentSession(),
+    onSuccess: () => {
+      toast.success("Session ended");
+      handleSignedOut();
+    },
+    onError: (err) => {
+      toast.error(err instanceof ApiError ? err.message : "Failed to sign out this session");
+    },
+  });
+
   const revokeOthers = useMutation({
     mutationFn: () => AuthApi.revokeOtherSessions(),
     onSuccess: (resp) => {
+      if (resp.signedOut) {
+        toast.success("Sessions revoked");
+        handleSignedOut();
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["settings", "sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["settings", "event_logs"] });
       toast.success(
         resp.revoked > 0 ? `${resp.revoked} other session(s) signed out` : "No other sessions were active",
       );
@@ -589,8 +620,15 @@ function SessionsCard() {
             <SessionRow
               key={s.jti}
               session={s}
-              onRevoke={() => revokeOne.mutate(s.jti)}
-              revoking={revokeOne.isPending && revokeOne.variables === s.jti}
+              onRevoke={() => {
+                if (s.current) revokeCurrent.mutate();
+                else revokeOne.mutate(s.jti);
+              }}
+              revoking={
+                s.current
+                  ? revokeCurrent.isPending
+                  : revokeOne.isPending && revokeOne.variables === s.jti
+              }
             />
           ))
         )}
@@ -630,11 +668,12 @@ function SessionRow({
           {location} · Last active {lastUsed.toLocaleString()}
         </div>
       </div>
-      {session.current ? (
-        <span className="text-meta text-accent-foreground bg-accent px-2 py-0.5 rounded-full">
-          This device
-        </span>
-      ) : (
+      <div className="flex items-center gap-2 shrink-0">
+        {session.current && (
+          <span className="text-meta text-accent-foreground bg-accent px-2 py-0.5 rounded-full">
+            This device
+          </span>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -642,9 +681,15 @@ function SessionRow({
           onClick={onRevoke}
           disabled={revoking}
         >
-          {revoking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Revoke"}
+          {revoking ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : session.current ? (
+            "Sign out"
+          ) : (
+            "Revoke"
+          )}
         </Button>
-      )}
+      </div>
     </div>
   );
 }

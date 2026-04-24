@@ -6,6 +6,7 @@ import "@blocknote/mantine/style.css";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type { Block } from "@blocknote/core";
 import { MiniPlayer } from "@/components/MiniPlayer";
+import { TagChips } from "@/components/TagChips";
 
 interface NoteEditorProps {
   noteId: string;
@@ -40,13 +41,11 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
     updateNoteContent(noteId, blocks, plainText);
   }, [editor, noteId, updateNoteContent]);
 
-  // Debounced save on content change
   const handleChange = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(save, 2000);
   }, [save]);
 
-  // Save on blur / unmount
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -63,12 +62,10 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Floating mini-player — appears when a track is loaded */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
         <MiniPlayer />
       </div>
 
-      {/* Title */}
       <motion.div
         className="px-16 pt-12 pb-4"
         initial={{ opacity: 0, y: 10 }}
@@ -84,20 +81,18 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
         <p className="text-meta text-muted-foreground mt-1">
           Last edited {new Date(note.updatedAt).toLocaleDateString()}
         </p>
+        <div className="mt-4">
+          <TagChips noteId={noteId} />
+        </div>
       </motion.div>
 
-      {/* Editor */}
       <motion.div
         className="flex-1 px-12 pb-12 overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
       >
-        <BlockNoteView
-          editor={editor}
-          onChange={handleChange}
-          theme="light"
-        />
+        <BlockNoteView editor={editor} onChange={handleChange} theme="light" />
       </motion.div>
     </motion.div>
   );
