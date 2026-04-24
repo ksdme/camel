@@ -488,6 +488,7 @@ Rules:
 - Prefer using the available KB tools before making claims about file structure or note contents.
 - Use exploreDirectoryStructure when folder layout matters.
 - Use searchNotes to locate relevant notes by keyword or phrase.
+- If searchNotes returns nothing useful or the results look incomplete, use exploreDirectoryStructure to inspect nearby folders and identify promising notes to open next.
 - Use outlineNote before reading a long note when structure matters.
 - Use readNote when exact note contents are needed.
 - When citing notes in your answer, mention the KB-relative note path.
