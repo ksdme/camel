@@ -8,7 +8,8 @@
   "main": "index.js",
   "scripts": {
     "agent": "tsx ./src/scripts/agent.ts",
-    "export:markdown-json": "tsx ./src/scripts/export-markdown-json.ts"
+    "export:markdown-json": "tsx ./src/scripts/export-markdown-json.ts",
+    "index:typesense": "tsx ./src/scripts/index-typesense.ts"
   },
   "devDependencies": {
     "@types/json-schema": "^7.0.15",

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ToolLoopAgent, stepCountIs, tool } from "ai";
 import { openrouter } from "@openrouter/ai-sdk-provider";
@@ -18,6 +18,14 @@ type JsonExport = {
   generatedAt: string;
   model?: string;
   entries: JsonEntry[];
+};
+
+type DirectoryTreeNode = {
+  entryPath: string;
+  name: string;
+  childDirectoryCount: number;
+  noteCount: number;
+  children: DirectoryTreeNode[];
 };
 
 function requirePrompt(argv: string[]): string {
@@ -129,7 +137,10 @@ function extractMarkdownOutline(
   return headings;
 }
 
-function extractLeadParagraph(content: string | null, maxChars = 240): string | null {
+function extractLeadParagraph(
+  content: string | null,
+  maxChars = 240,
+): string | null {
   if (!content) {
     return null;
   }
@@ -162,7 +173,93 @@ async function loadExport(jsonPath: string): Promise<JsonExport> {
   return parsed;
 }
 
-function createTools(entries: JsonEntry[]) {
+function normalizePathSegment(segment: string): string {
+  const normalized = segment.replace(/\s+/g, " ").trim();
+
+  if (!normalized || normalized === "." || normalized === "..") {
+    throw new Error("Path segments must not be empty, '.' or '..'.");
+  }
+
+  if (normalized.includes("/") || normalized.includes("\\")) {
+    throw new Error("Path segments must not contain path separators.");
+  }
+
+  return normalized;
+}
+
+function resolveNotePath(inputPath: string): {
+  entryPath: string;
+  parentPath: string | null;
+  directoryPaths: string[];
+} {
+  const trimmedPath = inputPath.trim().replace(/\\/g, "/");
+
+  if (!trimmedPath) {
+    throw new Error("Note path must not be empty.");
+  }
+
+  if (path.posix.isAbsolute(trimmedPath)) {
+    throw new Error("Note path must be relative to the notes root.");
+  }
+
+  const rawSegments = trimmedPath.split("/").filter(Boolean);
+  if (rawSegments.length === 0) {
+    throw new Error("Note path must contain at least one segment.");
+  }
+
+  const normalizedSegments = rawSegments.map(normalizePathSegment);
+  const fileName = normalizedSegments.at(-1);
+
+  if (!fileName) {
+    throw new Error("Note path must include a note name.");
+  }
+
+  const noteFileName = /\.md$/i.test(fileName) ? fileName : `${fileName}.md`;
+  const directorySegments = normalizedSegments.slice(0, -1);
+  const entryPath = [...directorySegments, noteFileName].join("/");
+  const parentPath =
+    directorySegments.length === 0 ? null : directorySegments.join("/");
+  const directoryPaths = directorySegments.map((_, index) =>
+    directorySegments.slice(0, index + 1).join("/"),
+  );
+
+  return {
+    entryPath,
+    parentPath,
+    directoryPaths,
+  };
+}
+
+function buildDirectoryTree(
+  entries: JsonEntry[],
+  parentPath: string | null,
+  depth: number,
+): DirectoryTreeNode[] {
+  if (depth < 0) {
+    return [];
+  }
+
+  const directories = entries
+    .filter((entry) => entry.isDirectory && entry.parentPath === parentPath)
+    .sort((left, right) => left.entryPath.localeCompare(right.entryPath));
+
+  return directories.map((directory) => ({
+    entryPath: directory.entryPath,
+    name: directory.name,
+    childDirectoryCount: entries.filter(
+      (entry) => entry.isDirectory && entry.parentPath === directory.entryPath,
+    ).length,
+    noteCount: entries.filter(
+      (entry) => !entry.isDirectory && entry.parentPath === directory.entryPath,
+    ).length,
+    children:
+      depth === 0
+        ? []
+        : buildDirectoryTree(entries, directory.entryPath, depth - 1),
+  }));
+}
+
+function createTools(rootDir: string, entries: JsonEntry[]) {
   return {
     listEntries: tool({
       description:
@@ -174,7 +271,9 @@ function createTools(entries: JsonEntry[]) {
           .min(1)
           .nullable()
           .optional()
-          .describe("Optional parent path filter. Use null to inspect top-level entries."),
+          .describe(
+            "Optional parent path filter. Use null to inspect top-level entries.",
+          ),
         directoriesOnly: z
           .boolean()
           .optional()
@@ -194,7 +293,10 @@ function createTools(entries: JsonEntry[]) {
               return entry.parentPath === null;
             }
 
-            if (typeof parentPath === "string" && entry.parentPath !== parentPath) {
+            if (
+              typeof parentPath === "string" &&
+              entry.parentPath !== parentPath
+            ) {
               return false;
             }
 
@@ -222,6 +324,41 @@ function createTools(entries: JsonEntry[]) {
             parentPath: entry.parentPath,
             parentNameNormalized: parentNameNormalizedForEntry(entry),
           })),
+        };
+      },
+    }),
+    exploreFolderLayout: tool({
+      description:
+        "Explore the current directory layout of the notes database. Use this before creating notes so you can prefer existing folders and only create new directories when truly necessary.",
+      inputSchema: z.object({
+        parentPath: z
+          .string()
+          .trim()
+          .min(1)
+          .nullable()
+          .optional()
+          .describe(
+            "Optional directory to explore. Use null for the top level.",
+          ),
+        maxDepth: z
+          .number()
+          .int()
+          .min(0)
+          .max(4)
+          .default(2)
+          .describe("How many nested directory levels to include."),
+      }),
+      execute: async ({ parentPath, maxDepth }) => {
+        const directories = buildDirectoryTree(
+          entries,
+          parentPath ?? null,
+          maxDepth,
+        );
+
+        return {
+          root: parentPath ?? null,
+          directoryCount: directories.length,
+          directories,
         };
       },
     }),
@@ -260,16 +397,24 @@ function createTools(entries: JsonEntry[]) {
             return haystacks.some((value) => value.includes(normalizedQuery));
           })
           .sort((left, right) => {
-            const leftScore =
-              left.entryPath.toLowerCase().includes(normalizedQuery) ? 0
-              : left.name.toLowerCase().includes(normalizedQuery) ? 1
-              : left.summary?.toLowerCase().includes(normalizedQuery) ? 2
-              : 3;
-            const rightScore =
-              right.entryPath.toLowerCase().includes(normalizedQuery) ? 0
-              : right.name.toLowerCase().includes(normalizedQuery) ? 1
-              : right.summary?.toLowerCase().includes(normalizedQuery) ? 2
-              : 3;
+            const leftScore = left.entryPath
+              .toLowerCase()
+              .includes(normalizedQuery)
+              ? 0
+              : left.name.toLowerCase().includes(normalizedQuery)
+                ? 1
+                : left.summary?.toLowerCase().includes(normalizedQuery)
+                  ? 2
+                  : 3;
+            const rightScore = right.entryPath
+              .toLowerCase()
+              .includes(normalizedQuery)
+              ? 0
+              : right.name.toLowerCase().includes(normalizedQuery)
+                ? 1
+                : right.summary?.toLowerCase().includes(normalizedQuery)
+                  ? 2
+                  : 3;
 
             if (leftScore !== rightScore) {
               return leftScore - rightScore;
@@ -329,7 +474,9 @@ function createTools(entries: JsonEntry[]) {
             parentNameNormalized: parentNameNormalizedForEntry(entry),
             summary: entry.summary,
             markdownContent:
-              entry.content === null ? null : entry.content.slice(0, maxCharacters),
+              entry.content === null
+                ? null
+                : entry.content.slice(0, maxCharacters),
             markdownWasTruncated:
               entry.content !== null && entry.content.length > maxCharacters,
           },
@@ -346,7 +493,9 @@ function createTools(entries: JsonEntry[]) {
           .min(1)
           .nullable()
           .optional()
-          .describe("Optional parent path to narrow the files. Use null for top-level files."),
+          .describe(
+            "Optional parent path to narrow the files. Use null for top-level files.",
+          ),
         limit: z
           .number()
           .int()
@@ -396,6 +545,193 @@ function createTools(entries: JsonEntry[]) {
         };
       },
     }),
+    createNote: tool({
+      description:
+        "Create a markdown note under the notes root. This tool organizes the note into a proper nested path, creates missing parent directories, and appends .md when needed.",
+      inputSchema: z.object({
+        notePath: z
+          .string()
+          .trim()
+          .min(1)
+          .describe(
+            "Relative note path under the notes root, for example 'Personal/Ideas/New Idea' or 'Work/Notes/Meeting.md'.",
+          ),
+        content: z
+          .string()
+          .default("")
+          .describe("Initial markdown content for the note."),
+        createParentsIfMissing: z
+          .boolean()
+          .default(false)
+          .describe(
+            "When true, create missing parent directories. Leave false to prefer the existing folder layout.",
+          ),
+        overwrite: z
+          .boolean()
+          .default(false)
+          .describe("When true, replace an existing note at the same path."),
+      }),
+      execute: async ({
+        notePath,
+        content,
+        createParentsIfMissing,
+        overwrite,
+      }) => {
+        const { entryPath, parentPath, directoryPaths } =
+          resolveNotePath(notePath);
+        const existingEntry = entries.find(
+          (entry) => entry.entryPath === entryPath,
+        );
+        const directoriesCreated: string[] = [];
+        const missingDirectories = directoryPaths.filter(
+          (directoryPath) =>
+            !entries.some(
+              (entry) => entry.entryPath === directoryPath && entry.isDirectory,
+            ),
+        );
+
+        if (existingEntry && existingEntry.isDirectory) {
+          throw new Error(`A directory already exists at '${entryPath}'.`);
+        }
+
+        if (existingEntry && !overwrite) {
+          return {
+            created: false,
+            reason: "already_exists",
+            entryPath,
+            parentPath,
+          };
+        }
+
+        if (missingDirectories.length > 0 && !createParentsIfMissing) {
+          return {
+            created: false,
+            reason: "missing_parent_directories",
+            entryPath,
+            parentPath,
+            missingDirectories,
+          };
+        }
+
+        const absolutePath = path.join(rootDir, ...entryPath.split("/"));
+        const absoluteParentPath =
+          parentPath === null
+            ? rootDir
+            : path.join(rootDir, ...parentPath.split("/"));
+
+        await mkdir(absoluteParentPath, { recursive: true });
+        await writeFile(absolutePath, content, "utf8");
+
+        for (const directoryPath of directoryPaths) {
+          const hasDirectory = entries.some(
+            (entry) => entry.entryPath === directoryPath && entry.isDirectory,
+          );
+
+          if (hasDirectory) {
+            continue;
+          }
+
+          const directoryParentPath =
+            path.posix.dirname(directoryPath) === "."
+              ? null
+              : path.posix.dirname(directoryPath);
+          directoriesCreated.push(directoryPath);
+
+          entries.push({
+            entryPath: directoryPath,
+            parentPath: directoryParentPath,
+            name: path.posix.basename(directoryPath),
+            isDirectory: true,
+            content: null,
+            summary: null,
+          });
+        }
+
+        if (existingEntry) {
+          existingEntry.content = content;
+          existingEntry.summary = null;
+        } else {
+          entries.push({
+            entryPath,
+            parentPath,
+            name: path.posix.basename(entryPath),
+            isDirectory: false,
+            content,
+            summary: null,
+          });
+        }
+
+        return {
+          created: true,
+          entryPath,
+          parentPath,
+          absolutePath,
+          directoriesCreated,
+          overwritten: Boolean(existingEntry),
+        };
+      },
+    }),
+    updateNote: tool({
+      description:
+        "Update an existing markdown note by exact path. Use this when the user wants to modify a note that already exists.",
+      inputSchema: z.object({
+        entryPath: z
+          .string()
+          .trim()
+          .min(1)
+          .describe(
+            "Exact existing note path, for example 'Personal/Notes.md'.",
+          ),
+        content: z.string().describe("Markdown content to write or append."),
+        mode: z
+          .enum(["replace", "append", "prepend"])
+          .default("replace")
+          .describe(
+            "How the new content should be applied to the existing note.",
+          ),
+      }),
+      execute: async ({ entryPath, content, mode }) => {
+        const normalizedPath = resolveNotePath(entryPath).entryPath;
+        const existingEntry = entries.find(
+          (entry) => entry.entryPath === normalizedPath,
+        );
+
+        if (!existingEntry) {
+          return {
+            updated: false,
+            reason: "not_found",
+            entryPath: normalizedPath,
+          };
+        }
+
+        if (existingEntry.isDirectory) {
+          throw new Error(`'${normalizedPath}' is a directory, not a note.`);
+        }
+
+        const currentContent = existingEntry.content ?? "";
+        const nextContent =
+          mode === "append"
+            ? `${currentContent}${content}`
+            : mode === "prepend"
+              ? `${content}${currentContent}`
+              : content;
+        const absolutePath = path.join(rootDir, ...normalizedPath.split("/"));
+
+        await writeFile(absolutePath, nextContent, "utf8");
+
+        existingEntry.content = nextContent;
+        existingEntry.summary = null;
+
+        return {
+          updated: true,
+          entryPath: normalizedPath,
+          absolutePath,
+          mode,
+          previousLength: currentContent.length,
+          nextLength: nextContent.length,
+        };
+      },
+    }),
   };
 }
 
@@ -408,16 +744,20 @@ async function main(): Promise<void> {
   const agent = new ToolLoopAgent({
     model: openrouter(modelId),
     instructions: `
-You are a document exploration agent for a markdown JSON export.
+You are a document exploration agent for a markdown notes workspace.
 
 Rules:
 - Use tools to inspect the database before making claims.
 - If direct keyword search is weak, use outline exploration to browse structure and find likely relevant files.
 - When answering, reference exact entry paths when possible.
+- Use exploreFolderLayout or listEntries to understand the current folder structure before creating notes.
+- Prefer existing directories wherever possible. Only create new directories when the current structure clearly does not fit.
+- When asked to create a note, use the createNote tool instead of only describing what should be created.
+- When asked to change an existing note, use the updateNote tool with the exact existing note path.
 - Keep answers concise and factual.
 - If the database does not contain enough evidence, say so clearly.
     `.trim(),
-    tools: createTools(dataset.entries),
+    tools: createTools(dataset.rootDir, dataset.entries),
     stopWhen: stepCountIs(8),
     onStepFinish: (step) => {
       for (const toolCall of step.toolCalls) {
