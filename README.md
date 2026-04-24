@@ -87,44 +87,7 @@ npm run prisma:migrate
 npm run prisma:generate
 ```
 
-## Current API
-
-The backend currently includes:
-
-- `POST /auth/login`
-- `GET /auth/me`
-- `POST /auth/logout`
-
-Example login request:
-
-```json
-{
-	"username": "C0oki3s",
-	"password": "Password@0"
-}
-```
-
-Use the returned JWT as a bearer token for protected routes:
-
-```text
-Authorization: Bearer <token>
-```
-
-## Project Layout
-
-```text
-camel/
-├── README.md
-└── backend/
-		├── auth/
-		├── prisma/
-		├── scripts/
-		├── package.json
-		└── encore.app
-```
-
 ## Notes
 
 - Local development uses SQLite via Prisma migrations.
-- JWT signing secrets are loaded from `backend/.secrets.local.cue`.
 - The backend README still contains some template material from the Encore starter; use this root README for the current project setup flow.
