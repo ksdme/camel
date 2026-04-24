@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Camel Design System — All colors in HSL */
+
+@layer base {
+  :root {
+    /* Sand neutrals */
+    --sand-50: 37.5 44.4% 96.5%;
+    --sand-100: 40 38.5% 92.4%;
+    --sand-200: 36.5 33.3% 86.5%;
+    --sand-300: 37.1 30.9% 78.4%;
+    --sand-400: 36.8 25.6% 66.3%;
+    --sand-500: 35.3 20.3% 50.8%;
+    --sand-600: 31.4 20.8% 39.6%;
+    --sand-700: 30 20.5% 30.6%;
+    --sand-800: 28.7 20.7% 21.8%;
+    --sand-900: 27.7 17.8% 14.3%;
+
+    /* Teal accent */
+    --teal-100: 173.3 50.9% 89.6%;
+    --teal-300: 173.3 47.4% 70.2%;
+    --teal-500: 172.6 56.5% 42.4%;
+    --teal-600: 172.9 62% 32%;
+    --teal-700: 173.1 63.9% 23.9%;
+
+    /* Semantic status */
+    --success: 139.4 50.8% 35.9%;
+    --warning: 37.4 72.9% 40.6%;
+    --info: 209.3 56.7% 42.5%;
+
+    /* Token mapping */
+    --background: var(--sand-50);
+    --foreground: var(--sand-900);
+
+    --card: 0 0% 100%;
+    --card-foreground: var(--sand-900);
+
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--sand-900);
+
+    --primary: var(--teal-600);
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: var(--sand-100);
+    --secondary-foreground: var(--sand-900);
+
+    --muted: var(--sand-200);
+    --muted-foreground: var(--sand-500);
+
+    --accent: var(--teal-100);
+    --accent-foreground: var(--teal-700);
+
+    --destructive: 2.6 57% 47.5%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: var(--sand-200);
+    --input: var(--sand-200);
+    --ring: var(--teal-600);
+
+    --radius: 0.625rem;
+
+    --sidebar-background: var(--sand-100);
+    --sidebar-foreground: var(--sand-900);
+    --sidebar-primary: var(--teal-600);
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: var(--teal-100);
+    --sidebar-accent-foreground: var(--teal-700);
+    --sidebar-border: var(--sand-200);
+    --sidebar-ring: var(--teal-600);
+  }
+
+  .dark {
+    /* Dark mode: invert sand surface, keep teal accent vivid */
+    --background: 27.7 17.8% 10%;
+    --foreground: 37.5 44.4% 96.5%;
+
+    --card: 28.7 20.7% 14%;
+    --card-foreground: 37.5 44.4% 96.5%;
+
+    --popover: 28.7 20.7% 14%;
+    --popover-foreground: 37.5 44.4% 96.5%;
+
+    --primary: 172.6 65% 50%;
+    --primary-foreground: 27.7 17.8% 10%;
+
+    --secondary: 30 20.5% 18%;
+    --secondary-foreground: 37.5 44.4% 96.5%;
+
+    --muted: 28.7 20.7% 18%;
+    --muted-foreground: 36.8 15% 65%;
+
+    --accent: 173.1 50% 22%;
+    --accent-foreground: 173.3 50.9% 89.6%;
+
+    --destructive: 2.6 60% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 15% 22%;
+    --input: 30 15% 22%;
+    --ring: 172.6 65% 50%;
+
+    --sidebar-background: 27.7 17.8% 8%;
+    --sidebar-foreground: 37.5 44.4% 96.5%;
+    --sidebar-primary: 172.6 65% 50%;
+    --sidebar-primary-foreground: 27.7 17.8% 10%;
+    --sidebar-accent: 173.1 50% 22%;
+    --sidebar-accent-foreground: 173.3 50.9% 89.6%;
+    --sidebar-border: 30 15% 22%;
+    --sidebar-ring: 172.6 65% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    font-family: "Plus Jakarta Sans", "Segoe UI", "Inter", sans-serif;
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Invisible scrollbars — scrolling still works */
+@layer utilities {
+  * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  *::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+}
+
+/* Smooth scroll globally */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Smooth transitions on all interactive elements */
+@layer base {
+  a,
+  button,
+  [role="button"],
+  input,
+  textarea,
+  select {
+    @apply transition-all duration-200 ease-out;
+  }
+}

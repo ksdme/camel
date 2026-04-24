@@ -15,8 +15,134 @@ model User {
   id           String   @id @default(uuid())
   username     String   @unique
   passwordHash String
+  email        String?  @unique
+  displayName  String?
+  deletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  authEvents   AuthEvent[]
+  refreshTokens RefreshToken[]
+  folders      Folder[]
+  notes        Note[]
+  tags         Tag[]
+  shares       Share[]
 
   @@map("users")
+}
+
+model AuthEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  username  String?
+  eventType String
+  success   Boolean
+  reason    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], map: "idx_auth_events_user_createdAt")
+  @@index([username, createdAt], map: "idx_auth_events_username_createdAt")
+  @@map("auth_events")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  jti        String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  ipAddress  String?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt], map: "idx_refresh_tokens_user_revoked")
+  @@map("refresh_tokens")
+}
+
+model Folder {
+  id        String   @id
+  userId    String
+  name      String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Folder?  @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Folder[] @relation("FolderChildren")
+  notes     Note[]
+
+  @@index([userId], map: "idx_folders_userId")
+  @@unique([userId, parentId, name], map: "uq_folders_user_parent_name")
+  @@map("folders")
+}
+
+model Note {
+  id         String    @id
+  userId     String
+  folderId   String?
+  title      String
+  content    String
+  plainText  String    @default("")
+  isArchived Boolean   @default(false)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder     Folder?   @relation(fields: [folderId], references: [id])
+  noteTags   NoteTag[]
+
+  @@index([userId, updatedAt(sort: Desc)], map: "idx_notes_user_updated")
+  @@index([folderId], map: "idx_notes_folder")
+  @@index([userId, deletedAt], map: "idx_notes_user_deleted")
+  @@map("notes")
+}
+
+model Tag {
+  id        String    @id
+  userId    String
+  name      String
+  color     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noteTags  NoteTag[]
+
+  @@unique([userId, name], map: "uq_tags_user_name")
+  @@index([userId], map: "idx_tags_userId")
+  @@map("tags")
+}
+
+model NoteTag {
+  noteId    String
+  tagId     String
+  createdAt DateTime @default(now())
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([tagId], map: "idx_note_tags_tagId")
+  @@map("note_tags")
+}
+
+model Share {
+  id             String    @id
+  ownerId        String
+  kind           String
+  targetId       String
+  recipientEmail String
+  accessLevel    String
+  token          String    @unique
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  owner          User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, kind, targetId, recipientEmail], map: "uq_shares_owner_target_recipient")
+  @@index([ownerId, kind, targetId], map: "idx_shares_owner_target")
+  @@index([recipientEmail], map: "idx_shares_recipient_email")
+  @@map("shares")
 }
