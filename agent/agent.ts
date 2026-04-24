@@ -23,13 +23,24 @@ type TreeNode = {
   files: string[];
 };
 
-function logEvent(label: string, payload?: unknown) {
-  if (payload === undefined) {
-    console.error(`[agent] ${label}`);
-    return;
+function formatValue(value: unknown, maxLength = 600) {
+  const serialized =
+    typeof value === "string" ? value : JSON.stringify(value, null, 2);
+
+  if (!serialized) {
+    return "(empty)";
   }
 
-  console.error(`[agent] ${label}: ${JSON.stringify(payload, null, 2)}`);
+  if (serialized.length <= maxLength) {
+    return serialized;
+  }
+
+  return `${serialized.slice(0, maxLength)}\n...`;
+}
+
+function logBlock(title: string, lines: string[]) {
+  const body = lines.map((line) => `  ${line}`).join("\n");
+  console.error(`[agent] ${title}\n${body}\n`);
 }
 
 function logReasoning(stepNumber: number, reasoningText: string | undefined) {
@@ -37,7 +48,70 @@ function logReasoning(stepNumber: number, reasoningText: string | undefined) {
     return;
   }
 
-  console.error(`[agent] thought step ${stepNumber}:\n${reasoningText}\n`);
+  logBlock(`Thought · Step ${stepNumber + 1}`, [reasoningText.trim()]);
+}
+
+function logToolStart(args: {
+  stepNumber?: number;
+  model?: { provider: string; modelId: string };
+  toolCallId: string;
+  toolName: string;
+  input: unknown;
+}) {
+  logBlock(`Tool Call · Step ${(args.stepNumber ?? 0) + 1}`, [
+    `Model: ${args.model?.modelId ?? "unknown"}`,
+    `Tool: ${args.toolName}`,
+    `Call ID: ${args.toolCallId}`,
+    "Input:",
+    formatValue(args.input),
+  ]);
+}
+
+function logToolFinish(args: {
+  stepNumber?: number;
+  model?: { provider: string; modelId: string };
+  durationMs: number;
+  toolCallId: string;
+  toolName: string;
+  output: unknown;
+}) {
+  logBlock(`Tool Result · Step ${(args.stepNumber ?? 0) + 1}`, [
+    `Model: ${args.model?.modelId ?? "unknown"}`,
+    `Tool: ${args.toolName}`,
+    `Call ID: ${args.toolCallId}`,
+    `Duration: ${Math.round(args.durationMs)}ms`,
+    "Output:",
+    formatValue(args.output),
+  ]);
+  console.log("------------");
+}
+
+function logToolError(args: {
+  stepNumber?: number;
+  model?: { provider: string; modelId: string };
+  durationMs: number;
+  toolCallId: string;
+  toolName: string;
+  error: string;
+}) {
+  logBlock(`Tool Error · Step ${(args.stepNumber ?? 0) + 1}`, [
+    `Model: ${args.model?.modelId ?? "unknown"}`,
+    `Tool: ${args.toolName}`,
+    `Call ID: ${args.toolCallId}`,
+    `Duration: ${Math.round(args.durationMs)}ms`,
+    `Error: ${args.error}`,
+  ]);
+}
+
+function logStepSummary(
+  stepNumber: number,
+  toolCallCount: number,
+  toolResultCount: number,
+) {
+  logBlock(`Step Summary · Step ${stepNumber + 1}`, [
+    `Tool calls: ${toolCallCount}`,
+    `Tool results: ${toolResultCount}`,
+  ]);
 }
 
 function printHelp() {
@@ -512,7 +586,7 @@ async function runTurn(
     tools,
     stopWhen: stepCountIs(8),
     experimental_onToolCallStart: ({ stepNumber, toolCall, model }) => {
-      logEvent("tool start", {
+      logToolStart({
         stepNumber,
         model,
         toolCallId: toolCall.toolCallId,
@@ -528,7 +602,7 @@ async function runTurn(
       ...event
     }) => {
       if (event.success) {
-        logEvent("tool finish", {
+        logToolFinish({
           stepNumber,
           model,
           durationMs,
@@ -539,24 +613,23 @@ async function runTurn(
         return;
       }
 
-      logEvent("tool error", {
+      logToolError({
         stepNumber,
         model,
         durationMs,
         toolCallId: toolCall.toolCallId,
         toolName: toolCall.toolName,
-        error: event.error instanceof Error ? event.error.message : String(event.error),
+        error:
+          event.error instanceof Error
+            ? event.error.message
+            : String(event.error),
       });
     },
     onStepFinish: ({ stepNumber, reasoningText, toolCalls, toolResults }) => {
       logReasoning(stepNumber, reasoningText);
 
       if (toolCalls.length > 0 || toolResults.length > 0) {
-        logEvent("step summary", {
-          stepNumber,
-          toolCallCount: toolCalls.length,
-          toolResultCount: toolResults.length,
-        });
+        logStepSummary(stepNumber, toolCalls.length, toolResults.length);
       }
     },
   });
