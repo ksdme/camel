@@ -4,7 +4,6 @@
 // Target palette as normalized RGB [0-1]
 // Sand neutrals (HSL → RGB approximations)
 const SAND_100: [number, number, number] = [0.925, 0.898, 0.847]; // #ECE5D8
-const SAND_300: [number, number, number] = [0.776, 0.737, 0.667]; // #C6BC AA
 const SAND_500: [number, number, number] = [0.576, 0.529, 0.451]; // #938773
 const SAND_800: [number, number, number] = [0.239, 0.196, 0.149]; // #3D3226
 const SAND_900: [number, number, number] = [0.165, 0.137, 0.102]; // #2A231A

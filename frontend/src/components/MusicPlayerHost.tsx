@@ -8,7 +8,7 @@ import { useMusicStore } from "@/stores/musicStore";
 export function MusicPlayerHost() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { tracks, currentId, isPlaying, volume, next } = useMusicStore();
+  const { tracks, currentId, isPlaying, volume } = useMusicStore();
 
   // Init element once
   useEffect(() => {

@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vp dev",
     "build": "tsc && vp build",
-    "preview": "vp preview"
+    "preview": "vp preview",
+    "build:ios": "tsc && vp build && npx cap sync ios && npx cap open ios"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.1",
     "@tailwindcss/typography": "^0.5.19",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -26,6 +28,8 @@
     "@blocknote/core": "^0.48.1",
     "@blocknote/mantine": "^0.48.1",
     "@blocknote/react": "^0.48.1",
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.2",
@@ -43,6 +47,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.1.6",
     "@tanstack/react-query": "^5.99.2",
+    "@testing-library/jest-dom": "^6.9.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -59,6 +64,25 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6",
-    "zustand": "^5.0.12"
+    "zustand": "^5.0.12",
+    "@radix-ui/react-accordion": "^1.2.0",
+    "@radix-ui/react-aspect-ratio": "^1.1.0",
+    "@radix-ui/react-checkbox": "^1.1.0",
+    "@radix-ui/react-collapsible": "^1.1.0",
+    "@radix-ui/react-context-menu": "^2.2.0",
+    "@radix-ui/react-hover-card": "^1.1.0",
+    "@radix-ui/react-menubar": "^1.1.0",
+    "@radix-ui/react-navigation-menu": "^1.2.0",
+    "@radix-ui/react-progress": "^1.1.0",
+    "@radix-ui/react-radio-group": "^1.2.0",
+    "@radix-ui/react-toggle": "^1.1.0",
+    "@radix-ui/react-toggle-group": "^1.1.0",
+    "embla-carousel-react": "^8.0.0",
+    "input-otp": "^1.2.0",
+    "react-day-picker": "^9.0.0",
+    "react-resizable-panels": "^2.0.0",
+    "recharts": "^2.12.0",
+    "vaul": "^0.9.0",
+    "vitest": "^1.0.0"
   }
 }

@@ -51,7 +51,7 @@ export function AgentChat() {
     }
   }, [isOpen]);
 
-  const sendToAgent = async (userText: string) => {
+  const sendToAgent = async (_text?: string) => {
     setLoading(true);
     try {
       // Simulate agent delay (replace with real edge function when Cloud is enabled)

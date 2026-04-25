@@ -100,7 +100,7 @@ export function RecentPage() {
       exit={{ opacity: 0, transition: { duration: 0.2 } }}
       transition={{ duration: 0.4, ease }}
     >
-      <div className="max-w-4xl mx-auto px-6 sm:px-10 pt-8 pb-32 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-10 pt-6 sm:pt-8 pb-32 space-y-6 sm:space-y-8">
         <header className="space-y-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-4 w-4" />

@@ -56,7 +56,7 @@ const ShareLandingPage = () => {
       })
       .join("\n");
     try {
-      await apiFetch(`/s/${token}/note`, {
+      await apiFetch(`/shares/by-token/${encodeURIComponent(token)}/note`, {
         method: "PATCH",
         body: JSON.stringify({ content: JSON.stringify(blocks), plainText }),
         skipAuthRefresh: true,
@@ -76,7 +76,7 @@ const ShareLandingPage = () => {
     setLoading(true);
     setError(null);
 
-    apiFetch<ShareTokenResponse>(`/s/${encodeURIComponent(token)}`, {
+    apiFetch<ShareTokenResponse>(`/shares/by-token/${encodeURIComponent(token)}`, {
       method: "GET",
       skipAuthRefresh: true,
     })

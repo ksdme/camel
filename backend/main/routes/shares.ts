@@ -234,7 +234,7 @@ export const createShare = api(
 );
 
 export const getShareByToken = api(
-  { expose: true, auth: false, method: "GET", path: "/s/:token" },
+  { expose: true, auth: false, method: "GET", path: "/shares/by-token/:token" },
   async (req: { token: string }): Promise<ShareItem> => {
     const token = normalizeToken(req.token);
 
@@ -319,7 +319,7 @@ interface UpdateSharedNoteRequest {
 }
 
 export const updateSharedNote = api(
-  { expose: true, auth: false, method: "PATCH", path: "/s/:token/note" },
+  { expose: true, auth: false, method: "PATCH", path: "/shares/by-token/:token/note" },
   async (req: UpdateSharedNoteRequest & { token: string }): Promise<{ ok: boolean }> => {
     const token = normalizeToken(req.token);
 

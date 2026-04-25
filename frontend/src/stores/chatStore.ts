@@ -22,7 +22,7 @@ interface ChatState {
   setLoading: (loading: boolean) => void;
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
+export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   isOpen: false,
   isLoading: false,

@@ -6,6 +6,29 @@ import { prisma } from "../../../lib/db";
 const jwtSigningSecret = secret("JWT_SIGNING_SECRET");
 const REFRESH_TOKEN_TTL = "30d";
 
+export const MAX_ACTIVE_SESSIONS = 5;
+
+// Revokes the oldest active sessions for a user when they exceed
+// MAX_ACTIVE_SESSIONS. "Oldest" is determined by lastUsedAt (falling back
+// to createdAt) so the most-recently-active sessions are always preserved.
+async function enforceSessionCap(userId: string): Promise<void> {
+  const active = await prisma.refreshToken.findMany({
+    where: {
+      userId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: [{ lastUsedAt: "desc" }, { createdAt: "desc" }],
+    select: { id: true },
+  });
+  if (active.length <= MAX_ACTIVE_SESSIONS) return;
+  const toRevoke = active.slice(MAX_ACTIVE_SESSIONS).map((t) => t.id);
+  await prisma.refreshToken.updateMany({
+    where: { id: { in: toRevoke } },
+    data: { revokedAt: new Date() },
+  });
+}
+
 export interface RefreshTokenPayload {
   sub: string;
   jti: string;
@@ -80,6 +103,7 @@ export async function storeRefreshToken(
       lastUsedAt: new Date(),
     },
   });
+  await enforceSessionCap(userId);
 }
 
 export async function revokeRefreshToken(jti: string): Promise<void> {
