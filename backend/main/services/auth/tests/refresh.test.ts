@@ -97,7 +97,7 @@ describe("POST /auth/refresh", () => {
       "old-jti",
       "user-1",
       expect.objectContaining({ jti: "new-jti", sub: "user-1", typ: "refresh" }),
-      expect.any(Object),
+      expect.objectContaining({ ipAddress: undefined, userAgent: undefined }),
     );
     expect(result.headers["set-cookie"]).toEqual([
       expect.stringContaining("access_token=access.next.jwt"),

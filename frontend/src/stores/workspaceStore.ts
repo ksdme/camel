@@ -54,7 +54,7 @@ interface WorkspaceState {
   shareDialogOpen: boolean;
   shareDialogKind: ShareKind | null;
   shareDialogTargetId: string | null;
-  openShareDialog: (kind: ShareKind, targetId: string) => void;
+  openShareDialog: (kind?: ShareKind | null, targetId?: string | null) => void;
   closeShareDialog: () => void;
 
   hydrateFolders: () => Promise<void>;
@@ -434,7 +434,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   shareDialogOpen: false,
   shareDialogKind: null,
   shareDialogTargetId: null,
-  openShareDialog: (kind, targetId) => set({ shareDialogOpen: true, shareDialogKind: kind, shareDialogTargetId: targetId }),
+  openShareDialog: (kind = null, targetId = null) =>
+    set({ shareDialogOpen: true, shareDialogKind: kind, shareDialogTargetId: targetId }),
   closeShareDialog: () => set({ shareDialogOpen: false, shareDialogKind: null, shareDialogTargetId: null }),
 
   createShare: async ({ kind, targetId, recipientEmail, accessLevel }) => {
