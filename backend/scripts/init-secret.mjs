@@ -8,8 +8,8 @@
 
 import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const backendDir = resolve(here, "..");
@@ -28,12 +28,41 @@ if (existsSync(secretsPath)) {
 }
 
 const cuteNames = [
-  "mochi", "biscuit", "pickle", "muffin", "waffle", "pebble",
-  "peanut", "nori", "sprout", "jellybean", "cupcake", "pumpkin",
-  "noodle", "dumpling", "sushi", "nugget", "pancake", "bagel",
-  "pretzel", "taco", "cookie", "marshmallow", "popsicle", "tater",
-  "sprinkle", "snickerdoodle", "whiskers", "hopscotch", "clover",
-  "poppy", "acorn", "pebbles", "butterbean", "gumdrop", "macaron",
+  "mochi",
+  "biscuit",
+  "pickle",
+  "muffin",
+  "waffle",
+  "pebble",
+  "peanut",
+  "nori",
+  "sprout",
+  "jellybean",
+  "cupcake",
+  "pumpkin",
+  "noodle",
+  "dumpling",
+  "sushi",
+  "nugget",
+  "pancake",
+  "bagel",
+  "pretzel",
+  "taco",
+  "cookie",
+  "marshmallow",
+  "popsicle",
+  "tater",
+  "sprinkle",
+  "snickerdoodle",
+  "whiskers",
+  "hopscotch",
+  "clover",
+  "poppy",
+  "acorn",
+  "pebbles",
+  "butterbean",
+  "gumdrop",
+  "macaron",
 ];
 
 const cuteName = cuteNames[Math.floor(Math.random() * cuteNames.length)];

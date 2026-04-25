@@ -6,7 +6,10 @@
   "license": "MPL-2.0",
   "type": "module",
   "scripts": {
-    "test": "vitest --passWithNoTests",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "lint": "biome ci .",
+    "lint:fix": "biome check --write .",
     "dev": "encore run",
     "setup": "node scripts/init-secret.mjs && prisma migrate deploy",
     "docker:up": "docker compose up -d",
@@ -15,8 +18,10 @@
     "prisma:migrate": "prisma migrate dev"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.13",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.5.7",
+    "@vitest/coverage-v8": "^1.6.1",
     "prisma": "^5.22.0",
     "typescript": "^5.2.2",
     "vitest": "^1.5.0"
@@ -25,7 +30,8 @@
     "@prisma/client": "^5.22.0",
     "argon2": "^0.41.1",
     "encore.dev": "^1.56.7",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "ts-results-es": "^7.0.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.13.0"

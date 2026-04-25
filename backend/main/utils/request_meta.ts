@@ -1,4 +1,4 @@
-import type { IncomingMessage, IncomingHttpHeaders } from "node:http";
+import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
 
 interface RequestMeta {
   ipAddress?: string;

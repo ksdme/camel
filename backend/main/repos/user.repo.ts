@@ -1,5 +1,5 @@
-import { prisma } from "../../lib/db";
-import type { PublicUser, UserProfile } from "../types";
+import { type DbClient, prisma } from "@/lib/db";
+import type { PublicUser, UserProfile } from "@/main/types";
 
 export interface UserAuthRow {
   id: string;
@@ -34,59 +34,68 @@ const PROFILE_SELECT = {
 } as const;
 
 class UserRepoImpl implements IUserRepo {
+  constructor(private readonly db: DbClient) {}
+
   async findById(id: string): Promise<UserProfile | null> {
-    return prisma.user.findUnique({ where: { id }, select: PROFILE_SELECT });
+    return this.db.user.findUnique({ where: { id }, select: PROFILE_SELECT });
   }
 
   async findByUsername(username: string): Promise<UserAuthRow | null> {
-    return prisma.user.findUnique({
+    return this.db.user.findUnique({
       where: { username },
       select: { id: true, username: true, passwordHash: true },
     });
   }
 
   async findCredentialsById(id: string): Promise<UserAuthRow | null> {
-    return prisma.user.findUnique({
+    return this.db.user.findUnique({
       where: { id },
       select: { id: true, username: true, passwordHash: true },
     });
   }
 
   async findEmailById(id: string): Promise<string | null> {
-    const row = await prisma.user.findUnique({ where: { id }, select: { email: true } });
+    const row = await this.db.user.findUnique({ where: { id }, select: { email: true } });
     return row?.email ?? null;
   }
 
   async findUsernameById(id: string): Promise<string | null> {
-    const row = await prisma.user.findUnique({ where: { id }, select: { username: true } });
+    const row = await this.db.user.findUnique({ where: { id }, select: { username: true } });
     return row?.username ?? null;
   }
 
   async create(username: string, passwordHash: string): Promise<PublicUser> {
-    return prisma.user.create({
+    return this.db.user.create({
       data: { username, passwordHash },
       select: { id: true, username: true, createdAt: true },
     });
   }
 
   async updateProfile(userId: string, data: ProfileUpdateData): Promise<UserProfile> {
-    return prisma.user.update({ where: { id: userId }, data, select: PROFILE_SELECT });
+    return this.db.user.update({ where: { id: userId }, data, select: PROFILE_SELECT });
   }
 
   async updatePasswordHash(userId: string, newHash: string): Promise<void> {
-    await prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash } });
+    await this.db.user.update({ where: { id: userId }, data: { passwordHash: newHash } });
   }
 
   async softDeleteProfile(userId: string): Promise<void> {
-    await prisma.user.update({
+    await this.db.user.update({
       where: { id: userId },
       data: { email: null, displayName: null, deletedAt: new Date() },
     });
   }
 
   async hardDelete(userId: string): Promise<void> {
-    await prisma.user.delete({ where: { id: userId } });
+    await this.db.user.delete({ where: { id: userId } });
   }
 }
 
-export const userRepo: IUserRepo = new UserRepoImpl();
+export function createUserRepo(db: DbClient): IUserRepo {
+  return new UserRepoImpl(db);
+}
+
+let _userRepo: IUserRepo | undefined;
+export function getUserRepo(): IUserRepo {
+  return (_userRepo ??= createUserRepo(prisma));
+}

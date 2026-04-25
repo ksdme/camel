@@ -1,12 +1,8 @@
 {
-    "mcpServers": {
-        "encore-mcp": {
-            "args": [
-                "mcp",
-                "run",
-                "--app=f9vf8"
-            ],
-            "command": "encore"
-        }
+  "mcpServers": {
+    "encore-mcp": {
+      "args": ["mcp", "run", "--app=f9vf8"],
+      "command": "encore"
     }
+  }
 }

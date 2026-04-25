@@ -6,6 +6,7 @@ Backend service for Camel, an agent-based knowledge management system.
 
 - Node.js 20+
 - npm
+- Docker + Docker Compose
 - Encore CLI
 
 Install Encore:
@@ -14,88 +15,48 @@ Install Encore:
 - Linux: `curl -L https://encore.dev/install.sh | bash`
 - Windows PowerShell: `iwr https://encore.dev/install.ps1 | iex`
 
-## Install
-
-From this `backend/` directory:
+## Dev Workflow
 
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-This also bootstraps local secrets and initializes the local database.
+# 2. Start the database and other services (if any)
+npm run docker:up
 
-## Initialize Local Development
+# 3. Generate local JWT secret + apply DB migrations
+npm run setup
 
-`npm install` is the full local setup step.
-
-```bash
-npm install
-```
-
-That does two things:
-
-- creates local secrets when missing
-- applies the Prisma migration to the local SQLite database
-
-If you only need the database step:
-
-```bash
-npm run init:db
-```
-
-## Run The Backend
-
-```bash
+# 4. Start the dev server
 encore run
 ```
-
-Default local endpoints:
 
 - API: `http://127.0.0.1:4000`
 - Encore dashboard: `http://127.0.0.1:9400`
 
+## Docker
+
+Docker runs backing services only (Postgres). The app itself always runs locally via `encore run`.
+
+```bash
+npm run docker:up     # start services
+npm run docker:down   # stop services
+```
+
+Data is persisted in a named Docker volume (`db_data`).
+
 ## Test
 
 ```bash
-npm test
+npm test        # unit tests
+encore test     # unit tests + infrastructure (isolated DB)
 ```
 
-For infrastructure-backed tests, use:
+## Database
+
+Migrations live in `prisma/migrations/`. To create a new migration after editing `schema.prisma`:
 
 ```bash
-encore test
-```
-
-## Current API
-
-- `GET /`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `GET /auth/me`
-- `GET /settings/event_logs`
-- `POST /auth/logout`
-
-Example login payload:
-
-```json
-{
-  "username": "C0oki3s",
-  "password": "Password@0"
-}
-```
-
-Protected endpoints require:
-
-```text
-Authorization: Bearer <token>
-```
-
-## Useful Commands
-
-```bash
-npm run prisma:generate
-```
-
-```bash
-npm run prisma:migrate
+npm run prisma:migrate   # prisma migrate dev (creates + applies)
+npm run prisma:generate  # regenerate Prisma client after schema changes
 ```

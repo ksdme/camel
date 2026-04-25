@@ -1,167 +1,110 @@
-import { randomBytes } from "node:crypto";
-import jwt from "jsonwebtoken";
-import { secret } from "encore.dev/config";
-import { prisma } from "../../../lib/db";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { APIError, api } from "encore.dev/api";
+import { getSessionRepo } from "@/main/repos";
+import { safeRecordAuthEvent } from "@/main/utils/auth/audit";
+import {
+  issueRefreshToken,
+  type RefreshTokenPayload,
+  verifyRefreshToken,
+} from "@/main/utils/auth/refresh";
+import { issueAccessToken } from "@/main/utils/auth/tokens";
+import { getCookieValue, sendApiError, sendJson, setAuthCookies } from "@/main/utils/cookies";
+import { requestMetaFromIncomingMessage } from "@/main/utils/request_meta";
 
-const jwtSigningSecret = secret("JWT_SIGNING_SECRET");
-const REFRESH_TOKEN_TTL = "30d";
+// POST /auth/refresh
+// Rotates refresh token and issues a fresh access token.
+export const refresh = api.raw(
+  { expose: true, method: "POST", path: "/auth/refresh" },
+  async (req: IncomingMessage, res: ServerResponse) => {
+    const reqMeta = requestMetaFromIncomingMessage(req);
+    const refreshToken: string | undefined = getCookieValue(req, "refresh_token");
 
-export interface RefreshTokenPayload {
-  sub: string;
-  jti: string;
-  iat: number;
-  exp: number;
-  typ: "refresh";
-}
+    if (!refreshToken) {
+      sendJson(res, 401, { code: "unauthenticated", message: "missing refresh token" });
+      return;
+    }
 
-function isRefreshTokenPayload(value: unknown): value is RefreshTokenPayload {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
+    try {
+      let payload: RefreshTokenPayload;
+      try {
+        payload = verifyRefreshToken(refreshToken);
+      } catch {
+        await safeRecordAuthEvent({
+          eventType: "refresh",
+          success: false,
+          reason: "invalid refresh token",
+          ipAddress: reqMeta.ipAddress,
+          userAgent: reqMeta.userAgent,
+        });
+        sendJson(res, 401, { code: "unauthenticated", message: "invalid refresh token" });
+        return;
+      }
 
-  const payload = value as Record<string, unknown>;
-  return (
-    typeof payload.sub === "string" &&
-    typeof payload.jti === "string" &&
-    typeof payload.iat === "number" &&
-    typeof payload.exp === "number" &&
-    payload.typ === "refresh"
-  );
-}
+      const active = await getSessionRepo().isActive(payload.jti, payload.sub);
+      if (!active) {
+        const isReuse = await getSessionRepo().isRevokedButActive(payload.jti, payload.sub);
+        if (isReuse) {
+          await getSessionRepo().revokeAllForUser(payload.sub);
+          await safeRecordAuthEvent({
+            userId: payload.sub,
+            eventType: "refresh",
+            success: false,
+            reason: "refresh token reuse detected - all sessions revoked",
+            ipAddress: reqMeta.ipAddress,
+            userAgent: reqMeta.userAgent,
+          });
+          sendJson(res, 401, { code: "unauthenticated", message: "suspicious activity detected" });
+        } else {
+          await safeRecordAuthEvent({
+            userId: payload.sub,
+            eventType: "refresh",
+            success: false,
+            reason: "refresh token revoked or expired",
+            ipAddress: reqMeta.ipAddress,
+            userAgent: reqMeta.userAgent,
+          });
+          sendJson(res, 401, {
+            code: "unauthenticated",
+            message: "refresh token revoked or expired",
+          });
+        }
+        return;
+      }
 
-export function issueRefreshToken(userId: string): {
-  token: string;
-  payload: RefreshTokenPayload;
-} {
-  const jti = randomBytes(16).toString("hex");
-  const token = jwt.sign(
-    { sub: userId, jti, typ: "refresh" },
-    jwtSigningSecret(),
-    { algorithm: "HS256", expiresIn: REFRESH_TOKEN_TTL },
-  );
+      const nextRefresh = issueRefreshToken(payload.sub);
+      const rotated = await getSessionRepo().rotate(
+        payload.jti,
+        payload.sub,
+        nextRefresh.payload,
+        reqMeta,
+      );
+      if (!rotated) {
+        await safeRecordAuthEvent({
+          userId: payload.sub,
+          eventType: "refresh",
+          success: false,
+          reason: "refresh token already rotated by concurrent request",
+          ipAddress: reqMeta.ipAddress,
+          userAgent: reqMeta.userAgent,
+        });
+        sendJson(res, 401, { code: "unauthenticated", message: "refresh token already used" });
+        return;
+      }
 
-  const decoded = jwt.decode(token);
-  if (!isRefreshTokenPayload(decoded)) {
-    throw new Error("failed to issue refresh token");
-  }
+      await safeRecordAuthEvent({
+        userId: payload.sub,
+        eventType: "refresh",
+        success: true,
+        ipAddress: reqMeta.ipAddress,
+        userAgent: reqMeta.userAgent,
+      });
 
-  return { token, payload: decoded };
-}
-
-export function verifyRefreshToken(token: string): RefreshTokenPayload {
-  const decoded = jwt.verify(token, jwtSigningSecret(), {
-    algorithms: ["HS256"],
-  });
-
-  if (!isRefreshTokenPayload(decoded)) {
-    throw new Error("invalid refresh token payload");
-  }
-
-  return decoded;
-}
-
-export interface DeviceMeta {
-  userAgent?: string;
-  ipAddress?: string;
-}
-
-export async function storeRefreshToken(
-  userId: string,
-  payload: RefreshTokenPayload,
-  device: DeviceMeta = {},
-): Promise<void> {
-  await prisma.refreshToken.create({
-    data: {
-      userId,
-      jti: payload.jti,
-      expiresAt: new Date(payload.exp * 1000),
-      userAgent: device.userAgent ?? null,
-      ipAddress: device.ipAddress ?? null,
-      lastUsedAt: new Date(),
-    },
-  });
-}
-
-export async function revokeRefreshToken(jti: string): Promise<void> {
-  await prisma.refreshToken.updateMany({
-    where: { jti, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-}
-
-export async function revokeAllRefreshTokensForUser(userId: string): Promise<void> {
-  await prisma.refreshToken.updateMany({
-    where: { userId, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-}
-
-export async function revokeOtherRefreshTokensForUser(
-  userId: string,
-  keepJti: string,
-): Promise<number> {
-  const result = await prisma.refreshToken.updateMany({
-    where: { userId, revokedAt: null, NOT: { jti: keepJti } },
-    data: { revokedAt: new Date() },
-  });
-  return result.count;
-}
-
-export async function isActiveRefreshToken(jti: string, userId: string): Promise<boolean> {
-  const token = await prisma.refreshToken.findFirst({
-    where: {
-      jti,
-      userId,
-      revokedAt: null,
-      expiresAt: { gt: new Date() },
-    },
-    select: { jti: true },
-  });
-
-  return token !== null;
-}
-
-// Returns false when oldJti was already rotated by a concurrent request (TOCTOU guard).
-export async function rotateRefreshToken(
-  oldJti: string,
-  userId: string,
-  nextPayload: RefreshTokenPayload,
-  device: DeviceMeta = {},
-): Promise<boolean> {
-  return prisma.$transaction(async (tx) => {
-    const { count } = await tx.refreshToken.updateMany({
-      where: { jti: oldJti, userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-
-    if (count === 0) return false;
-
-    await tx.refreshToken.create({
-      data: {
-        userId,
-        jti: nextPayload.jti,
-        expiresAt: new Date(nextPayload.exp * 1000),
-        userAgent: device.userAgent ?? null,
-        ipAddress: device.ipAddress ?? null,
-        lastUsedAt: new Date(),
-      },
-    });
-
-    return true;
-  });
-}
-
-// Returns true when a token was explicitly revoked but has not yet expired —
-// presenting such a token is a strong signal of replay/theft.
-export async function isRevokedActiveToken(jti: string, userId: string): Promise<boolean> {
-  const token = await prisma.refreshToken.findFirst({
-    where: {
-      jti,
-      userId,
-      revokedAt: { not: null },
-      expiresAt: { gt: new Date() },
-    },
-    select: { jti: true },
-  });
-  return token !== null;
-}
+      const newAccessToken = issueAccessToken(payload.sub);
+      setAuthCookies(res, newAccessToken, nextRefresh.token);
+      sendJson(res, 200, { ok: true });
+    } catch (err) {
+      if (err instanceof APIError) sendApiError(res, err);
+      else sendJson(res, 500, { code: "internal", message: "internal server error" });
+    }
+  },
+);

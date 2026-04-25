@@ -1,12 +1,12 @@
-import { APIError, Gateway, Header } from "encore.dev/api";
+import { APIError, Gateway, type Header } from "encore.dev/api";
 import { authHandler } from "encore.dev/auth";
 import log from "encore.dev/log";
-import { safeRecordAuthEvent } from "../services/auth/audit";
-import { tokenBlocklist } from "../services/auth/cache";
-import { isRevokedBlocklistValue } from "../services/auth/revocation";
-import { verifyAccessToken } from "../services/auth/tokens";
-import { parseCookies } from "../utils/cookies";
-import { requestMetaFromHeaders } from "../utils/request_meta";
+import { safeRecordAuthEvent } from "@/main/utils/auth/audit";
+import { tokenBlocklist } from "@/main/utils/auth/cache";
+import { isRevokedBlocklistValue } from "@/main/utils/auth/revocation";
+import { type AccessTokenPayload, verifyAccessToken } from "@/main/utils/auth/tokens";
+import { parseCookies } from "@/main/utils/cookies";
+import { requestMetaFromHeaders } from "@/main/utils/request_meta";
 
 interface AuthParams {
   authorization?: Header<"Authorization">;
@@ -55,7 +55,7 @@ export const authenticate = authHandler<AuthParams, AuthData>(
       throw APIError.unauthenticated("no token provided");
     }
 
-    let payload;
+    let payload: AccessTokenPayload;
     try {
       payload = verifyAccessToken(token);
     } catch {
