@@ -4,9 +4,9 @@ import { useWorkspaceStore } from "@/stores/workspaceStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { ease } from "@/lib/motion";
 import { SketchShowcase } from "@/components/SketchShowcase";
-import { SettingsPage } from "@/hooks/pages/SettingsPage";
-import { RecentPage } from "@/hooks/pages/RecentPage";
-import { SharedPage } from "@/hooks/pages/SharedPage";
+import { SettingsPage } from "@/pages/SettingsPage";
+import { RecentPage } from "@/pages/RecentPage";
+import { SharedPage } from "@/pages/SharedPage";
 
 const Index = () => {
   const activeNoteId = useWorkspaceStore((s) => s.activeNoteId);

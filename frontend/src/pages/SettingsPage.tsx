@@ -4,9 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Settings as SettingsIcon,
-  Music2,
-  Check,
-  Plug,
   User,
   Shield,
   Cable,
@@ -54,12 +51,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useTheme } from "@/hooks/use-theme";
-import { useMusicStore, type Provider } from "@/stores/musicStore";
 import { useAuthStore } from "@/stores/authStore";
 import * as AuthApi from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { ease, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { MobileDevicePairingCard } from "@/components/settings/MobileDevicePairingCard";
 import { toast } from "sonner";
 
 type SectionId = "account" | "security" | "integrations";
@@ -421,6 +418,7 @@ function SecuritySection() {
       <SectionHeader title="Security" description="Protect your account with strong credentials." />
 
       <PasswordCard />
+      <MobileDevicePairingCard />
 
       <Card>
         <ToggleRow
@@ -704,66 +702,12 @@ function formatDevice(userAgent: string | null): string {
 /* -------------------- Integrations -------------------- */
 
 function IntegrationsSection() {
-  const { connections, connect, disconnect } = useMusicStore();
-  const [accounts, setAccounts] = useState<Record<Provider, string>>({
-    spotify: "",
-    ytmusic: "",
-  });
-
-  const handleConnect = (p: Provider) => {
-    const account = accounts[p].trim() || (p === "spotify" ? "user@spotify" : "user@ytmusic");
-    connect(p, account);
-    toast.success(`${p === "spotify" ? "Spotify" : "YouTube Music"} connected`);
-  };
-
-  const handleDisconnect = (p: Provider) => {
-    disconnect(p);
-    toast.success(`${p === "spotify" ? "Spotify" : "YouTube Music"} disconnected`);
-  };
-
   return (
     <div className="space-y-6">
       <SectionHeader
         title="Integrations"
         description="Connect Camel to the tools and services you already use."
       />
-
-      <div>
-        <h3 className="text-meta font-medium uppercase tracking-wider text-muted-foreground mb-3">
-          Music
-        </h3>
-        <motion.div
-          className="space-y-3"
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
-        >
-          <ConnectionRow
-            provider="spotify"
-            name="Spotify"
-            hint="username or email"
-            color="bg-[hsl(141,73%,42%)]"
-            connected={connections.spotify.connected}
-            account={connections.spotify.account}
-            value={accounts.spotify}
-            onChange={(v) => setAccounts((s) => ({ ...s, spotify: v }))}
-            onConnect={() => handleConnect("spotify")}
-            onDisconnect={() => handleDisconnect("spotify")}
-          />
-          <ConnectionRow
-            provider="ytmusic"
-            name="YouTube Music"
-            hint="Google account"
-            color="bg-[hsl(0,72%,51%)]"
-            connected={connections.ytmusic.connected}
-            account={connections.ytmusic.account}
-            value={accounts.ytmusic}
-            onChange={(v) => setAccounts((s) => ({ ...s, ytmusic: v }))}
-            onConnect={() => handleConnect("ytmusic")}
-            onDisconnect={() => handleDisconnect("ytmusic")}
-          />
-        </motion.div>
-      </div>
 
       <div>
         <h3 className="text-meta font-medium uppercase tracking-wider text-muted-foreground mb-3">
@@ -1210,79 +1154,3 @@ function formatDateTime(d: Date) {
   });
 }
 
-function ConnectionRow({
-  provider,
-  name,
-  hint,
-  color,
-  connected,
-  account,
-  value,
-  onChange,
-  onConnect,
-  onDisconnect,
-}: {
-  provider: Provider;
-  name: string;
-  hint: string;
-  color: string;
-  connected: boolean;
-  account?: string;
-  value: string;
-  onChange: (v: string) => void;
-  onConnect: () => void;
-  onDisconnect: () => void;
-}) {
-  return (
-    <motion.div
-      variants={staggerItem}
-      className="rounded-xl border border-border bg-card p-4 space-y-3"
-    >
-      <div className="flex items-center gap-3">
-        <div className={cn("h-10 w-10 rounded-full flex items-center justify-center text-white shrink-0", color)}>
-          <Music2 className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-body font-medium">{name}</div>
-          <div className="text-meta text-muted-foreground truncate flex items-center gap-1.5">
-            {connected ? (
-              <>
-                <Check className="h-3 w-3 text-primary" />
-                Connected as {account}
-              </>
-            ) : (
-              <>
-                <Plug className="h-3 w-3" />
-                Not connected
-              </>
-            )}
-          </div>
-        </div>
-        {connected && (
-          <Button size="sm" variant="outline" onClick={onDisconnect}>
-            Disconnect
-          </Button>
-        )}
-      </div>
-      {!connected && (
-        <div className="flex items-end gap-2">
-          <div className="flex-1 space-y-1">
-            <Label htmlFor={`${provider}-account`} className="text-meta">
-              {hint}
-            </Label>
-            <Input
-              id={`${provider}-account`}
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={hint}
-              className="h-9"
-            />
-          </div>
-          <Button size="sm" onClick={onConnect}>
-            Connect
-          </Button>
-        </div>
-      )}
-    </motion.div>
-  );
-}

@@ -11,6 +11,11 @@ export interface LoginResponse {
   created: boolean;
 }
 
+export interface MobileLoginTokenResponse {
+  token: string;
+  expiresInSec: number;
+}
+
 export interface OkResponse {
   ok: boolean;
 }
@@ -42,6 +47,20 @@ export function login(body: LoginRequest): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(body),
+    skipAuthRefresh: true,
+  });
+}
+
+export function createMobileLoginToken(): Promise<MobileLoginTokenResponse> {
+  return apiFetch<MobileLoginTokenResponse>("/auth/mobile-login-token", {
+    method: "POST",
+  });
+}
+
+export function consumeMobileLoginToken(token: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/auth/mobile-login/consume", {
+    method: "POST",
+    body: JSON.stringify({ token }),
     skipAuthRefresh: true,
   });
 }

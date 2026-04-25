@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, LogIn, Sparkles } from "lucide-react";
+import { Loader2, LogIn, Smartphone, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +18,10 @@ const USERNAME_RE = /^[a-zA-Z0-9_]+$/;
 
 function validate(username: string, password: string): string | null {
   if (username.length < 3 || username.length > 32 || !USERNAME_RE.test(username)) {
-    return "Username must be 3–32 characters, letters/numbers/underscore only.";
+    return "Username must be 3-32 characters, letters/numbers/underscore only.";
   }
   if (password.length < 8 || password.length > 128) {
-    return "Password must be 8–128 characters.";
+    return "Password must be 8-128 characters.";
   }
   return null;
 }
@@ -32,6 +33,11 @@ const Login = () => {
   const setUser = useAuthStore((s) => s.setUser);
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
+  const hydrate = useAuthStore((s) => s.hydrate);
+
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
 
   useEffect(() => {
     if (user && status === "authenticated") {
@@ -44,6 +50,10 @@ const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isNativeMobile = Capacitor.isNativePlatform();
+  const [mobileLoginMode, setMobileLoginMode] = useState<"qr" | "password">(
+    isNativeMobile ? "qr" : "password",
+  );
   const redirectTo = (location.state as { from?: string } | null)?.from ?? "/";
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -82,7 +92,6 @@ const Login = () => {
 
   return (
     <div className="relative min-h-screen w-full bg-background text-foreground">
-      {/* Soft layered background — sand wash + teal glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-accent/40 blur-3xl" />
         <div className="absolute -bottom-32 -right-24 h-[26rem] w-[26rem] rounded-full bg-primary/15 blur-3xl" />
@@ -115,72 +124,99 @@ const Login = () => {
 
             <CardContent>
               <form onSubmit={onSubmit} className="space-y-5" noValidate>
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    autoComplete="username"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    placeholder="your_handle"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    disabled={submitting}
-                    minLength={3}
-                    maxLength={32}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    3–32 characters. Letters, numbers, underscore.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={submitting}
-                    minLength={8}
-                    maxLength={128}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">At least 8 characters.</p>
-                </div>
-
-                {error ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, ease }}
-                    role="alert"
-                    className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                  >
-                    {error}
-                  </motion.div>
+                {isNativeMobile ? (
+                  <div className="space-y-2">
+                    <Button type="button" className="w-full" asChild>
+                      <Link to="/mobile/pair">
+                        <Smartphone className="h-4 w-4" />
+                        QR Scan Login (Recommended)
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => setMobileLoginMode("password")}
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Username and Password
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Use QR Scan Login to pair and sign in faster.
+                    </p>
+                  </div>
                 ) : null}
 
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Signing in…
-                    </>
-                  ) : (
-                    <>
-                      <LogIn className="h-4 w-4" />
-                      Continue
-                    </>
-                  )}
-                </Button>
+                {(!isNativeMobile || mobileLoginMode === "password") && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        name="username"
+                        type="text"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        placeholder="your_handle"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        disabled={submitting}
+                        minLength={3}
+                        maxLength={32}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        3-32 characters. Letters, numbers, underscore.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autoComplete="current-password"
+                        placeholder="........"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={submitting}
+                        minLength={8}
+                        maxLength={128}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+                    </div>
+
+                    {error ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, ease }}
+                        role="alert"
+                        className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                      >
+                        {error}
+                      </motion.div>
+                    ) : null}
+
+                    <Button type="submit" className="w-full" disabled={submitting}>
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Signing in...
+                        </>
+                      ) : (
+                        <>
+                          <LogIn className="h-4 w-4" />
+                          Continue
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
 
                 <p className="text-center text-xs text-muted-foreground">
                   By continuing you agree to the Camel terms and privacy notice.
@@ -190,7 +226,7 @@ const Login = () => {
           </Card>
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            New here? Just enter a fresh username — your account will be created automatically.
+            New here? Enter a fresh username and your account is created automatically.
           </p>
         </motion.div>
       </main>

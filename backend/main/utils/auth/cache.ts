@@ -10,3 +10,9 @@ const cluster = new CacheCluster("auth-cache", {
 export const tokenBlocklist = new StringKeyspace<{ jti: string }>(cluster, {
   keyPattern: "blocklist/:jti",
 });
+
+// Short-lived one-time tokens used to sign a mobile app into the same account
+// after scanning a QR code from the authenticated web settings screen.
+export const mobileLoginTokens = new StringKeyspace<{ token: string }>(cluster, {
+  keyPattern: "mobile-login/:token",
+});

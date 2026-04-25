@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ShareDialog } from "@/components/ShareDialog";
 import { toast } from "@/hooks/use-toast";
+import { copyToClipboard } from "@/lib/utils";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import type {
   ShareAccessLevel,
@@ -126,6 +127,7 @@ export function SharedPage() {
     shareDialogOpen,
     shareDialogKind,
     shareDialogTargetId,
+    openShareDialog,
     closeShareDialog,
   } = useWorkspaceStore(
     useShallow((s) => ({
@@ -145,6 +147,7 @@ export function SharedPage() {
       shareDialogOpen: s.shareDialogOpen,
       shareDialogKind: s.shareDialogKind,
       shareDialogTargetId: s.shareDialogTargetId,
+      openShareDialog: s.openShareDialog,
       closeShareDialog: s.closeShareDialog,
     }))
   );
@@ -191,10 +194,10 @@ export function SharedPage() {
   };
 
   const copyLink = async (token: string) => {
-    try {
-      await navigator.clipboard.writeText(shareLink(token));
+    const ok = await copyToClipboard(shareLink(token));
+    if (ok) {
       toast({ title: "Link copied" });
-    } catch {
+    } else {
       toast({ title: "Couldn't copy link", variant: "destructive" });
     }
   };
@@ -208,14 +211,14 @@ export function SharedPage() {
       exit={{ opacity: 0, transition: { duration: 0.2 } }}
       transition={{ duration: 0.4, ease }}
     >
-      <div className="max-w-4xl mx-auto px-6 sm:px-10 pt-8 pb-32 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-10 pt-6 sm:pt-8 pb-32 space-y-6 sm:space-y-8">
         <header className="space-y-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-4 w-4" />
             <span className="text-label-xs uppercase tracking-wider">Shared</span>
           </div>
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
               <h1 className="font-serif text-h1 text-foreground">Shared with external users</h1>
               <p className="text-body text-muted-foreground mt-1">
                 Notes and folders you've shared outside your workspace. Manage access or revoke links.
@@ -226,7 +229,8 @@ export function SharedPage() {
               createShare={createShare}
               open={shareDialogOpen}
               onOpenChange={(open) => {
-                if (!open) closeShareDialog();
+                if (open) openShareDialog(shareDialogKind, shareDialogTargetId);
+                else closeShareDialog();
               }}
               defaultKind={shareDialogKind ?? "note"}
               defaultTargetId={shareDialogTargetId ?? undefined}
@@ -285,9 +289,9 @@ export function SharedPage() {
                         transition: { duration: 0.25, ease },
                       }}
                       transition={{ duration: 0.3, ease }}
-                      className="group rounded-xl border border-border bg-card p-4 hover:border-foreground/20 transition-colors"
+                      className="group rounded-xl border border-border bg-card p-3 sm:p-4 hover:border-foreground/20 transition-colors"
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3">
                         <div className="h-10 w-10 rounded-lg bg-sand-200 flex items-center justify-center shrink-0">
                           {group.kind === "folder" ? (
                             <Folder className="h-5 w-5 text-foreground/70" />
@@ -348,12 +352,12 @@ export function SharedPage() {
                           </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 shrink-0">
+                        <div className="flex flex-row sm:flex-col md:flex-row items-stretch sm:items-end md:items-center gap-1.5 shrink-0 self-start sm:self-auto">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => void copyLink(group.shares[0].token)}
-                            className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                            className="md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           >
                             <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                             Copy link

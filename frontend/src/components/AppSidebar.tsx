@@ -16,7 +16,6 @@ import {
   FolderPlus,
   FilePlus,
   ExternalLink,
-  Music,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -209,20 +208,6 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-2">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Music"
-              onClick={() => {
-                navigateHome();
-                setActiveView("music");
-              }}
-              isActive={pathname === "/" && activeView === "music"}
-              className="hover:bg-sand-200 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-            >
-              <Music className="h-4 w-4" />
-              {!collapsed && <span>Music</span>}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Settings"

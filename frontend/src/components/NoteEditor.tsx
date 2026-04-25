@@ -67,7 +67,7 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
       </div>
 
       <motion.div
-        className="px-16 pt-12 pb-4"
+        className="px-4 pt-8 pb-4 sm:px-10 sm:pt-12 lg:px-16"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
@@ -87,7 +87,7 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
       </motion.div>
 
       <motion.div
-        className="flex-1 px-12 pb-12 overflow-y-auto"
+        className="flex-1 px-2 pb-12 sm:px-8 lg:px-12 overflow-y-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}

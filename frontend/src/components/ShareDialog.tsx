@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { copyToClipboard } from "@/lib/utils";
 import type { ShareAccessLevel, ShareKind, WorkspaceShare } from "@/types/workspace";
 
 export interface ShareDialogTarget {
@@ -87,10 +88,10 @@ export function ShareDialog({
       }
 
       const link = `${window.location.origin}/s/${share.token}`;
-      try {
-        await navigator.clipboard.writeText(link);
+      const ok = await copyToClipboard(link);
+      if (ok) {
         toast({ title: "Share link copied", description: "The link is ready to paste." });
-      } catch {
+      } else {
         toast({
           title: "Share created",
           description: "Copy the link from the share list after closing.",

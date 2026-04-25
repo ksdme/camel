@@ -1,7 +1,6 @@
-import { useEffect } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { useNavigate } from "react-router-dom";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -31,32 +30,38 @@ export function AppShell({ title, children }: AppShellProps) {
         <AppSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 flex items-center justify-between gap-4 border-b border-border px-4 sm:px-6">
-            <div className="flex items-center gap-3 min-w-0">
-              <Link to="/" className="text-lg font-semibold tracking-tight text-foreground truncate">
-                Camel
-              </Link>
+          <header className="h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 border-b border-border px-2 sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <SidebarTrigger className="md:hidden shrink-0" />
               {title ? (
-                <h1 className="text-base font-semibold text-foreground truncate">{title}</h1>
+                <h1 className="text-sm sm:text-base font-semibold text-foreground truncate">
+                  {title}
+                </h1>
               ) : null}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               {status === "loading" || !hydrated ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">
+                <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading auth
                 </span>
               ) : null}
               {user ? (
-                <span className="hidden sm:inline-flex text-sm text-muted-foreground">
+                <span className="hidden md:inline-flex text-sm text-muted-foreground truncate max-w-[14rem]">
                   Signed in as @{user.username}
                 </span>
               ) : null}
               <ThemeToggle />
-              <Button size="sm" variant="outline" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleLogout}
+                aria-label="Logout"
+                className="px-2 sm:px-3"
+              >
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </div>
           </header>
