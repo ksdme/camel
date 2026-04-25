@@ -4,9 +4,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
+import { MobileDeepLinkBridge } from "@/components/MobileDeepLinkBridge";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./hooks/pages/Index.tsx";
 import Login from "./pages/Login.tsx";
+import MobileConsumeLoginPage from "./pages/MobileConsumeLoginPage.tsx";
+import MobilePairPage from "./pages/MobilePairPage.tsx";
 import Profile from "./pages/Profile.tsx";
 import { SettingsPage } from "./pages/SettingsPage.tsx";
 import ShareLandingPage from "./pages/ShareLandingPage.tsx";
@@ -20,8 +23,11 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <MobileDeepLinkBridge />
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/mobile/pair" element={<MobilePairPage />} />
+          <Route path="/mobile/consume-login" element={<MobileConsumeLoginPage />} />
           <Route
             path="/"
             element={

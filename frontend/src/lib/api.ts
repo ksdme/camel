@@ -1,5 +1,15 @@
-export const API_BASE_URL =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "http://192.168.56.1:4000";
+import { Capacitor } from "@capacitor/core";
+import { Preferences } from "@capacitor/preferences";
+import { API_URL_STORAGE_KEY, normalizeDevServerUrl } from "@/lib/dev-pairing";
+
+const envApiBaseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+
+export function getPairingApiBaseUrl(frontendUrl?: string) {
+  const normalizedEnvApiBaseUrl = envApiBaseUrl ? normalizeDevServerUrl(envApiBaseUrl) : null;
+  if (normalizedEnvApiBaseUrl) return normalizedEnvApiBaseUrl;
+  if (!frontendUrl) return "";
+  return normalizeDevServerUrl(frontendUrl) ?? "";
+}
 
 export interface ApiErrorBody {
   code?: string;
@@ -32,11 +42,24 @@ interface ApiFetchOptions extends RequestInit {
 
 let refreshInFlight: Promise<boolean> | null = null;
 
+async function resolveApiBaseUrl() {
+  if (Capacitor.isNativePlatform()) {
+    const { value } = await Preferences.get({ key: API_URL_STORAGE_KEY });
+    if (value) {
+      const normalized = normalizeDevServerUrl(value);
+      if (normalized) return normalized;
+    }
+  }
+
+  return getPairingApiBaseUrl();
+}
+
 async function attemptRefresh(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        const apiBaseUrl = await resolveApiBaseUrl();
+        const res = await fetch(`${apiBaseUrl}/auth/refresh`, {
           method: "POST",
           credentials: "include",
         });
@@ -59,7 +82,8 @@ async function rawFetch<T>(path: string, init: RequestInit): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const apiBaseUrl = await resolveApiBaseUrl();
+  const res = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers,
     credentials: "include",

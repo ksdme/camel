@@ -3,8 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { Prisma, prisma } from "../../../lib/db";
 import { safeRecordAuthEvent } from "../../services/auth/audit";
 import { hashPassword, verifyPassword } from "../../services/auth/password";
-import { issueRefreshToken, storeRefreshToken } from "../../services/auth/refresh";
-import { issueAccessToken } from "../../services/auth/tokens";
+import { issueSessionTokens } from "../../services/auth/session";
 import { readJsonBody, sendApiError, sendJson, setAuthCookies } from "../../utils/cookies";
 import { requestMetaFromIncomingMessage } from "../../utils/request_meta";
 import type { PublicUser } from "../../types";
@@ -12,16 +11,6 @@ import type { PublicUser } from "../../types";
 interface LoginResponse {
   user: PublicUser;
   created: boolean;
-}
-
-async function issueSessionTokens(
-  userId: string,
-  device: { userAgent?: string; ipAddress?: string },
-): Promise<{ token: string; refreshToken: string }> {
-  const token = issueAccessToken(userId);
-  const refresh = issueRefreshToken(userId);
-  await storeRefreshToken(userId, refresh.payload, device);
-  return { token, refreshToken: refresh.token };
 }
 
 function isUniqueUsernameError(err: unknown): boolean {

@@ -56,6 +56,7 @@ import * as AuthApi from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
 import { ease, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { MobileDevicePairingCard } from "@/components/settings/MobileDevicePairingCard";
 import { toast } from "sonner";
 
 type SectionId = "account" | "security" | "integrations";
@@ -417,6 +418,7 @@ function SecuritySection() {
       <SectionHeader title="Security" description="Protect your account with strong credentials." />
 
       <PasswordCard />
+      <MobileDevicePairingCard />
 
       <Card>
         <ToggleRow

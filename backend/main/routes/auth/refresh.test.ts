@@ -79,7 +79,7 @@ describe("POST /auth/refresh", () => {
       token: "refresh.next.jwt",
       payload: { sub: "user-1", jti: "new-jti", iat: 3, exp: 4, typ: "refresh" },
     });
-    rotateRefreshToken.mockResolvedValue(undefined);
+    rotateRefreshToken.mockResolvedValue(true);
     issueAccessToken.mockReturnValue("access.next.jwt");
 
     const result = await invokeRawHandler(refresh, {
@@ -95,6 +95,7 @@ describe("POST /auth/refresh", () => {
       "old-jti",
       "user-1",
       expect.objectContaining({ jti: "new-jti", sub: "user-1", typ: "refresh" }),
+      expect.objectContaining({ ipAddress: undefined, userAgent: undefined }),
     );
     expect(result.headers["set-cookie"]).toEqual([
       expect.stringContaining("access_token=access.next.jwt"),

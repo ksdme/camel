@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'camel',
   webDir: 'dist',
   server: {
-    url: 'http://192.168.1.6:5173',
     cleartext: true,
-    androidScheme: 'http'
+    androidScheme: 'http',
+    allowNavigation: ['*']
   }
 };
 
