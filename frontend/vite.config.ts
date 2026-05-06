@@ -367,6 +367,20 @@ export default defineConfig({
     ),
   },
 
+  // preview (vp preview) — mirrors server.proxy so API calls work when running
+  // the production build locally or in environments without a separate proxy.
+  preview: {
+    host: "0.0.0.0",
+    port: 5173,
+    strictPort: true,
+    proxy: Object.fromEntries(
+      ["/auth", "/folders", "/notes", "/tags", "/shares", "/settings"].map((p) => [
+        p,
+        { target: "http://127.0.0.1:4000", changeOrigin: false },
+      ]),
+    ),
+  },
+
   fmt: {},
   lint: { options: { typeAware: true, typeCheck: true } },
 });
